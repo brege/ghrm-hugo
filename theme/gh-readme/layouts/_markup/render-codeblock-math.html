@@ -1,0 +1,4 @@
+<div class="ghrm-math-block">$$
+{{ .Inner | htmlEscape | safeHTML }}
+$$</div>
+{{ .Page.Store.Set "hasMath" true }}

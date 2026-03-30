@@ -1,0 +1,3 @@
+name = "gh-readme"
+description = "Minimal Hugo theme replicating GitHub README rendering"
+min_version = "0.132.0"

@@ -1,0 +1,5 @@
+<div class="ghrm-block ghrm-mermaid">
+  <div class="ghrm-mermaid-diagram"></div>
+  <template class="ghrm-data">{{ .Inner | htmlEscape | safeHTML }}</template>
+</div>
+{{ .Page.Store.Set "hasMermaid" true }}

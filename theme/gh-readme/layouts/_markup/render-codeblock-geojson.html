@@ -1,0 +1,5 @@
+<div class="ghrm-block ghrm-geojson">
+  <div class="ghrm-map-canvas"></div>
+  <template class="ghrm-data">{{ .Inner | htmlEscape | safeHTML }}</template>
+</div>
+{{ .Page.Store.Set "hasMap" true }}
