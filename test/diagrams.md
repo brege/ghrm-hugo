@@ -4,7 +4,7 @@ Create diagrams to convey information through charts and graphs.
 
 ## About creating diagrams
 
-You can create diagrams in Markdown using four different syntaxes: mermaid, geoJSON, topoJSON, and ASCII STL. Diagram rendering is available in GitHub Issues, GitHub Discussions, pull requests, wikis, and Markdown files.
+You can create diagrams in Markdown using three different syntaxes: mermaid, geoJSON, and topoJSON. Diagram rendering is available in GitHub Issues, GitHub Discussions, pull requests, wikis, and Markdown files.
 
 ## Creating Mermaid diagrams
 
@@ -220,86 +220,6 @@ For example, you can create a TopoJSON map by specifying coordinates and shapes.
 
 For more information on working with `.geojson` and `.topojson` files, see [Working with non-code files](https://docs.github.com/en/repositories/working-with-files/using-files/working-with-non-code-files#mapping-geojson-files-on-github).
 
-## Creating STL 3D models
+## STL 3D models
 
-You can use ASCII STL syntax directly in markdown to create interactive 3D models. To display a model, add ASCII STL syntax inside a fenced code block with the `stl` syntax identifier. For more information, see [Creating and highlighting code blocks](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-and-highlighting-code-blocks).
-
-For example, you can create a simple 3D model:
-
-### Raw
-
-````text
-```stl
-solid cube_corner
-  facet normal 0.0 -1.0 0.0
-    outer loop
-      vertex 0.0 0.0 0.0
-      vertex 1.0 0.0 0.0
-      vertex 0.0 0.0 1.0
-    endloop
-  endfacet
-  facet normal 0.0 0.0 -1.0
-    outer loop
-      vertex 0.0 0.0 0.0
-      vertex 0.0 1.0 0.0
-      vertex 1.0 0.0 0.0
-    endloop
-  endfacet
-  facet normal -1.0 0.0 0.0
-    outer loop
-      vertex 0.0 0.0 0.0
-      vertex 0.0 0.0 1.0
-      vertex 0.0 1.0 0.0
-    endloop
-  endfacet
-  facet normal 0.577 0.577 0.577
-    outer loop
-      vertex 1.0 0.0 0.0
-      vertex 0.0 1.0 0.0
-      vertex 0.0 0.0 1.0
-    endloop
-  endfacet
-endsolid
-```
-````
-
-### Screenshot
-
-![Screenshot of a 3D model of a blue pyramid on a grid of black lines. Options "Wireframe", "Surface Angle", or "Solid" appear at bottom.](https://docs.github.com/assets/images/help/writing/fenced-stl-rendered-object.png)
-
-### Live Rendering
-
-```stl
-solid cube_corner
-  facet normal 0.0 -1.0 0.0
-    outer loop
-      vertex 0.0 0.0 0.0
-      vertex 1.0 0.0 0.0
-      vertex 0.0 0.0 1.0
-    endloop
-  endfacet
-  facet normal 0.0 0.0 -1.0
-    outer loop
-      vertex 0.0 0.0 0.0
-      vertex 0.0 1.0 0.0
-      vertex 1.0 0.0 0.0
-    endloop
-  endfacet
-  facet normal -1.0 0.0 0.0
-    outer loop
-      vertex 0.0 0.0 0.0
-      vertex 0.0 0.0 1.0
-      vertex 0.0 1.0 0.0
-    endloop
-  endfacet
-  facet normal 0.577 0.577 0.577
-    outer loop
-      vertex 1.0 0.0 0.0
-      vertex 0.0 1.0 0.0
-      vertex 0.0 0.0 1.0
-    endloop
-  endfacet
-endsolid
-```
-
-For more information on working with `.stl` files, see [Working with non-code files](https://docs.github.com/en/repositories/working-with-files/using-files/working-with-non-code-files#3d-file-viewer).
+STL examples were dropped from this fixture because GitHub does not present them consistently as an inline Markdown embed here.

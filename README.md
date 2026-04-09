@@ -16,7 +16,7 @@ cd ghrm
 make install
 ```
 
-This symlinks `ghrm` into `~/.local/bin` and downloads vendor assets (Mermaid, KaTeX, Leaflet, Three.js) on first run so you can use it offline.
+This symlinks `ghrm` into `~/.local/bin` and downloads vendor assets (Mermaid, KaTeX, Leaflet) on first run so you can use it offline.
 
 ## Usage
 
@@ -43,7 +43,6 @@ Commands: `:Ghrm` to start, `:GhrmStop` to stop, or just exit nvim.
 - Mermaid diagrams
 - KaTeX math (inline, display, and fenced `math` blocks)
 - GeoJSON and TopoJSON maps
-- STL 3D model viewer (work in progress)
 - Light/dark theme toggle
 
 ### Examples

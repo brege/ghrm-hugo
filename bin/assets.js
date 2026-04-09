@@ -35,10 +35,6 @@ const files = [
   ["https://unpkg.com/leaflet@1.9.4/dist/leaflet.css", "leaflet/leaflet.css"],
   ["https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", "leaflet/leaflet.js"],
   ["https://unpkg.com/topojson-client@3/dist/topojson-client.min.js", "topojson-client.min.js"],
-  ["https://unpkg.com/three@0.182.0/build/three.module.js", "three/three.module.js"],
-  ["https://unpkg.com/three@0.182.0/build/three.core.js", "three/three.core.js"],
-  ["https://unpkg.com/three@0.182.0/examples/jsm/controls/OrbitControls.js", "three/OrbitControls.js"],
-  ["https://unpkg.com/three@0.182.0/examples/jsm/loaders/STLLoader.js", "three/STLLoader.js"],
   ...katex.map((font) => [
     "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/fonts/" + font + ".woff2",
     "katex/fonts/" + font + ".woff2",

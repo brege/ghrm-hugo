@@ -39,15 +39,6 @@
   <script defer src="/vendor/leaflet/leaflet.js"></script>
   <script defer src="/vendor/topojson-client.min.js"></script>
   {{- end }}
-  {{- if .Store.Get "hasStl" }}
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "/vendor/three/three.module.js"
-    }
-  }
-  </script>
-  {{- end }}
   <script type="module" src="/js/preview.js"></script>
   <script>
   (function() {
