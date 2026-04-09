@@ -98,7 +98,10 @@ fi
 hugo server --source "$tmpdir" --port "$port" --bind 127.0.0.1 --disableFastRender &
 hugo_pid=$!
 
-sleep 1
+for _ in $(seq 1 30); do
+  ss -tln "sport = :$port" 2>/dev/null | grep -q "$port" && break
+  sleep 0.1
+done
 xdg-open "http://localhost:$port/" &>/dev/null &
 
 wait "$hugo_pid"

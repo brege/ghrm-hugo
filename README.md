@@ -34,7 +34,7 @@ Add to your lazy.nvim config:
 { "brege/ghrm", ft = "markdown", config = function() require("ghrm").setup() end }
 ```
 
-Commands: `:Ghrm` to start, `:GhrmStop` to stop.
+Commands: `:Ghrm` to start, `:GhrmStop` to stop, or just exit nvim.
 
 ## Supported Features
 
@@ -45,6 +45,16 @@ Commands: `:Ghrm` to start, `:GhrmStop` to stop.
 - GeoJSON and TopoJSON maps
 - STL 3D model viewer (work in progress)
 - Light/dark theme toggle
+
+### Examples
+
+- [Basics](test/basics.md)
+- [Diagrams](test/diagrams.md)
+
+```bash
+ghrm test/basics.md
+ghrm test/diagrams.md
+```
 
 ## Uninstall
 

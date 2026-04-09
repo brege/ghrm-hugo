@@ -1,5 +1,93 @@
-let mermaidSerial = 0;
+let mermaidId = 0;
 let mermaidVersionPromise;
+const copyResetDelay = 2000;
+
+function copyIcon() {
+  return `
+    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" width="16" class="ghrm-copy-icon ghrm-copy-icon-copy">
+      <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path>
+      <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+    </svg>
+  `;
+}
+
+function checkIcon() {
+  return `
+    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" width="16" class="ghrm-copy-icon ghrm-copy-icon-check">
+      <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+    </svg>
+  `;
+}
+
+function getCopyHost(pre) {
+  const wrapper = pre.parentElement;
+  if (wrapper?.classList.contains('highlight')) {
+    return wrapper;
+  }
+
+  return pre;
+}
+
+function getCopyText(pre) {
+  return pre.querySelector('code')?.textContent || pre.textContent || '';
+}
+
+async function writeClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const input = document.createElement('textarea');
+  input.value = text;
+  input.setAttribute('readonly', '');
+  input.style.position = 'absolute';
+  input.style.left = '-9999px';
+  document.body.appendChild(input);
+  input.select();
+  document.execCommand('copy');
+  input.remove();
+}
+
+function showCopied(button) {
+  if (button._ghrmCopyReset) {
+    window.clearTimeout(button._ghrmCopyReset);
+  }
+
+  button.classList.add('is-copied');
+  button.setAttribute('aria-label', 'Copied!');
+
+  button._ghrmCopyReset = window.setTimeout(() => {
+    button.classList.remove('is-copied');
+    button.setAttribute('aria-label', 'Copy');
+    button._ghrmCopyReset = null;
+  }, copyResetDelay);
+}
+
+function addCopyButtons() {
+  for (const pre of document.querySelectorAll('.markdown-body pre')) {
+    const host = getCopyHost(pre);
+    if (!host || host.querySelector(':scope > .ghrm-copy-button')) {
+      continue;
+    }
+
+    host.classList.add('ghrm-copy-host');
+    pre.classList.add('ghrm-copy-target');
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'ghrm-copy-button';
+    button.setAttribute('aria-label', 'Copy');
+    button.dataset.copyFeedback = 'Copied!';
+    button.innerHTML = `${copyIcon()}${checkIcon()}`;
+    button.addEventListener('click', async () => {
+      await writeClipboard(getCopyText(pre));
+      showCopied(button);
+    });
+
+    host.appendChild(button);
+  }
+}
 
 function getSource(block) {
   return block.querySelector('.ghrm-data')?.content?.textContent?.trim() || '';
@@ -108,12 +196,10 @@ async function renderMermaid() {
     },
   });
 
-  let index = 0;
   for (const block of blocks) {
     const source = getSource(block);
     const target = block.querySelector('.ghrm-mermaid-diagram');
     if (!source || !target) {
-      index += 1;
       continue;
     }
 
@@ -124,13 +210,10 @@ async function renderMermaid() {
       if (source.trim() === 'info') {
         const version = await getMermaidVersion(api);
         target.innerHTML = `<pre class="ghrm-mermaid-info">mermaid ${version}</pre>`;
-        index += 1;
         continue;
       }
 
-      const id = `ghrm-mermaid-${mermaidSerial}-${index}`;
-      const result = await api.render(id, source);
-      mermaidSerial += 1;
+      const result = await api.render(`ghrm-mermaid-${mermaidId++}`, source);
       target.innerHTML = result.svg;
       if (typeof result.bindFunctions === 'function') {
         result.bindFunctions(target);
@@ -138,24 +221,22 @@ async function renderMermaid() {
     } catch (error) {
       setError(block, error.message);
     }
-
-    index += 1;
   }
 }
 
 async function getMermaidVersion(api) {
-  const direct =
-    (typeof api.version === 'function' && api.version()) ||
-    api.version ||
-    api.mermaidAPI?.version;
-  if (direct) {
-    return direct;
+  if (typeof api.version === 'function') {
+    return api.version();
+  }
+
+  if (api.version) {
+    return api.version;
   }
 
   if (!mermaidVersionPromise) {
     mermaidVersionPromise = fetch('/vendor/mermaid-version.txt')
-      .then((response) => response.text())
-      .then((text) => text.trim() || 'unknown')
+      .then((r) => r.text())
+      .then((t) => t.trim() || 'unknown')
       .catch(() => 'unknown');
   }
 
@@ -252,21 +333,14 @@ function renderMaps() {
     return;
   }
 
-  for (const block of document.querySelectorAll('.ghrm-geojson')) {
-    clearError(block);
-    try {
-      renderMapBlock(block, 'geojson');
-    } catch (error) {
-      setError(block, error.message);
-    }
-  }
-
-  for (const block of document.querySelectorAll('.ghrm-topojson')) {
-    clearError(block);
-    try {
-      renderMapBlock(block, 'topojson');
-    } catch (error) {
-      setError(block, error.message);
+  for (const [selector, kind] of [['.ghrm-geojson', 'geojson'], ['.ghrm-topojson', 'topojson']]) {
+    for (const block of document.querySelectorAll(selector)) {
+      clearError(block);
+      try {
+        renderMapBlock(block, kind);
+      } catch (error) {
+        setError(block, error.message);
+      }
     }
   }
 }
@@ -437,10 +511,12 @@ document.addEventListener('DOMContentLoaded', async function() {
   await renderMermaid();
   renderMaps();
   await renderStl();
+  addCopyButtons();
 });
 
 document.addEventListener('ghrm:themechange', async function() {
   await renderMermaid();
   renderMaps();
   refreshStlTheme();
+  addCopyButtons();
 });

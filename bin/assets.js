@@ -78,14 +78,7 @@ async function writeVersion() {
 }
 
 async function main() {
-  if (typeof fetch !== "function") {
-    throw new Error("node fetch is unavailable");
-  }
-
-  for (const [url, rel] of files) {
-    await get(url, rel);
-  }
-
+  await Promise.all(files.map(([url, rel]) => get(url, rel)));
   await writeVersion();
 }
 
