@@ -19,6 +19,14 @@ function checkIcon() {
   `;
 }
 
+function fullscreenIcon() {
+  return `
+    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" width="16" class="ghrm-action-icon">
+      <path d="M3.72 3.72a.75.75 0 0 1 1.06 1.06L2.56 7h10.88l-2.22-2.22a.75.75 0 0 1 1.06-1.06l3.5 3.5a.75.75 0 0 1 0 1.06l-3.5 3.5a.75.75 0 1 1-1.06-1.06l2.22-2.22H2.56l2.22 2.22a.75.75 0 1 1-1.06 1.06l-3.5-3.5a.75.75 0 0 1 0-1.06Z"></path>
+    </svg>
+  `;
+}
+
 function getCopyHost(pre) {
   const wrapper = pre.parentElement;
   if (wrapper?.classList.contains('highlight')) {
@@ -55,11 +63,11 @@ function showCopied(button) {
   }
 
   button.classList.add('is-copied');
-  button.setAttribute('aria-label', 'Copied!');
+  button.setAttribute('aria-label', button.dataset.copyFeedback || 'Copied!');
 
   button._ghrmCopyReset = window.setTimeout(() => {
     button.classList.remove('is-copied');
-    button.setAttribute('aria-label', 'Copy');
+    button.setAttribute('aria-label', button.dataset.copyLabel || 'Copy');
     button._ghrmCopyReset = null;
   }, copyResetDelay);
 }
@@ -78,6 +86,7 @@ function addCopyButtons() {
     button.type = 'button';
     button.className = 'ghrm-copy-button';
     button.setAttribute('aria-label', 'Copy');
+    button.dataset.copyLabel = 'Copy';
     button.dataset.copyFeedback = 'Copied!';
     button.innerHTML = `${copyIcon()}${checkIcon()}`;
     button.addEventListener('click', async () => {
@@ -122,6 +131,39 @@ function themeColors() {
     polygonFill: '#6f42c1',
     line: '#0969da',
     point: '#0969da',
+  };
+}
+
+function mermaidTheme() {
+  if (isDarkTheme()) {
+    return {
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#161b22',
+        primaryBorderColor: '#8b949e',
+        primaryTextColor: '#e6edf3',
+        lineColor: '#c9d1d9',
+        secondaryColor: '#161b22',
+        tertiaryColor: '#161b22',
+        mainBkg: '#0d1117',
+        nodeBkg: '#161b22',
+        clusterBkg: '#0d1117',
+        clusterBorder: '#30363d',
+        edgeLabelBackground: '#0d1117',
+      },
+    };
+  }
+
+  return {
+    theme: 'neutral',
+    themeVariables: {
+      primaryColor: '#eae4f5',
+      primaryBorderColor: '#998eb5',
+      primaryTextColor: '#1f2328',
+      lineColor: '#666',
+      secondaryColor: '#eae4f5',
+      tertiaryColor: '#eae4f5',
+    },
   };
 }
 
@@ -176,6 +218,162 @@ function renderMath() {
   }
 }
 
+function mermaidNavIcon(action) {
+  const icons = {
+    'zoom-in': '<path d="M3.75 7.5a.75.75 0 0 1 .75-.75h2.25V4.5a.75.75 0 0 1 1.5 0v2.25h2.25a.75.75 0 0 1 0 1.5H8.25v2.25a.75.75 0 0 1-1.5 0V8.25H4.5a.75.75 0 0 1-.75-.75Z"></path><path d="M7.5 0a7.5 7.5 0 0 1 5.807 12.247l2.473 2.473a.749.749 0 1 1-1.06 1.06l-2.473-2.473A7.5 7.5 0 1 1 7.5 0Zm-6 7.5a6 6 0 1 0 12 0 6 6 0 0 0-12 0Z"></path>',
+    'zoom-out': '<path d="M4.5 6.75h6a.75.75 0 0 1 0 1.5h-6a.75.75 0 0 1 0-1.5Z"></path><path d="M0 7.5a7.5 7.5 0 1 1 13.307 4.747l2.473 2.473a.749.749 0 1 1-1.06 1.06l-2.473-2.473A7.5 7.5 0 0 1 0 7.5Zm7.5-6a6 6 0 1 0 0 12 6 6 0 0 0 0-12Z"></path>',
+    reset: '<path d="M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z"></path>',
+    up: '<path d="M3.22 10.53a.749.749 0 0 1 0-1.06l4.25-4.25a.749.749 0 0 1 1.06 0l4.25 4.25a.749.749 0 1 1-1.06 1.06L8 6.811 4.28 10.53a.749.749 0 0 1-1.06 0Z"></path>',
+    down: '<path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z"></path>',
+    left: '<path d="M9.78 12.78a.75.75 0 0 1-1.06 0L4.47 8.53a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L6.06 8l3.72 3.72a.75.75 0 0 1 0 1.06Z"></path>',
+    right: '<path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"></path>',
+  };
+  return icons[action] || '';
+}
+
+function mermaidNavButton(action, label, classes = '') {
+  const className = ['ghrm-mermaid-button', classes].filter(Boolean).join(' ');
+  return `<button type="button" class="${className}" data-action="${action}" aria-label="${label}">
+    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" width="16" class="ghrm-action-icon">
+      ${mermaidNavIcon(action)}
+    </svg>
+  </button>`;
+}
+
+function mermaidNav() {
+  return `
+    <div class="ghrm-mermaid-nav" aria-label="Mermaid navigation">
+      ${mermaidNavButton('up', 'Pan up', 'ghrm-mermaid-up')}
+      ${mermaidNavButton('zoom-in', 'Zoom in', 'ghrm-mermaid-zoom-in')}
+      ${mermaidNavButton('left', 'Pan left', 'ghrm-mermaid-left')}
+      ${mermaidNavButton('reset', 'Reset view', 'ghrm-mermaid-reset')}
+      ${mermaidNavButton('right', 'Pan right', 'ghrm-mermaid-right')}
+      ${mermaidNavButton('down', 'Pan down', 'ghrm-mermaid-down')}
+      ${mermaidNavButton('zoom-out', 'Zoom out', 'ghrm-mermaid-zoom-out')}
+    </div>
+  `;
+}
+
+function destroyMermaidNav(block) {
+  if (block._ghrmMermaid?.panZoom) {
+    block._ghrmMermaid.panZoom.destroy();
+  }
+
+  block._ghrmMermaid = null;
+}
+
+function handleMermaidNav(panZoom, action) {
+  if (action === 'reset') {
+    panZoom.resetZoom();
+    panZoom.center();
+    return;
+  }
+
+  if (action === 'zoom-in') {
+    panZoom.zoomIn();
+    return;
+  }
+
+  if (action === 'zoom-out') {
+    panZoom.zoomOut();
+    return;
+  }
+
+  const step = 48;
+  const pan = panZoom.getPan();
+  if (action === 'up') {
+    panZoom.pan({ x: pan.x, y: pan.y + step });
+  } else if (action === 'right') {
+    panZoom.pan({ x: pan.x - step, y: pan.y });
+  } else if (action === 'down') {
+    panZoom.pan({ x: pan.x, y: pan.y - step });
+  } else if (action === 'left') {
+    panZoom.pan({ x: pan.x + step, y: pan.y });
+  }
+}
+
+function setupMermaidNav(block, target) {
+  const svg = target.querySelector('svg');
+  if (!svg || typeof window.svgPanZoom !== 'function') {
+    return;
+  }
+
+  destroyMermaidNav(block);
+  target.classList.add('ghrm-mermaid-interactive');
+  target.insertAdjacentHTML('beforeend', mermaidNav());
+  svg.removeAttribute('width');
+  svg.removeAttribute('height');
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('height', '100%');
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+  const panZoom = window.svgPanZoom(svg, {
+    center: true,
+    controlIconsEnabled: false,
+    dblClickZoomEnabled: false,
+    fit: true,
+    maxZoom: 25,
+    minZoom: 0.5,
+    mouseWheelZoomEnabled: true,
+    panEnabled: true,
+    zoomEnabled: true,
+    zoomScaleSensitivity: 0.3,
+  });
+  panZoom.resize();
+  panZoom.fit();
+  panZoom.center();
+
+  for (const button of target.querySelectorAll('.ghrm-mermaid-button')) {
+    button.addEventListener('click', () => {
+      handleMermaidNav(panZoom, button.dataset.action || '');
+    });
+  }
+
+  block._ghrmMermaid = { panZoom };
+}
+
+function ensureMermaidActions(block) {
+  let actions = block.querySelector(':scope > .ghrm-render-actions');
+  if (actions) {
+    return actions;
+  }
+
+  actions = document.createElement('div');
+  actions.className = 'ghrm-render-actions';
+
+  const fullscreen = document.createElement('button');
+  fullscreen.type = 'button';
+  fullscreen.className = 'ghrm-action-button';
+  fullscreen.setAttribute('aria-label', 'Open fullscreen view');
+  fullscreen.innerHTML = fullscreenIcon();
+  fullscreen.addEventListener('click', async () => {
+    if (document.fullscreenElement === block) {
+      await document.exitFullscreen();
+      return;
+    }
+
+    if (typeof block.requestFullscreen === 'function') {
+      await block.requestFullscreen();
+    }
+  });
+
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.className = 'ghrm-action-button ghrm-action-copy';
+  copy.setAttribute('aria-label', 'Copy mermaid code');
+  copy.dataset.copyLabel = 'Copy mermaid code';
+  copy.dataset.copyFeedback = 'Copied!';
+  copy.innerHTML = `${copyIcon()}${checkIcon()}`;
+  copy.addEventListener('click', async () => {
+    await writeClipboard(getSource(block));
+    showCopied(copy);
+  });
+
+  actions.append(fullscreen, copy);
+  block.prepend(actions);
+  return actions;
+}
+
 async function renderMermaid() {
   const api = window.mermaid;
   const blocks = document.querySelectorAll('.ghrm-mermaid');
@@ -185,15 +383,7 @@ async function renderMermaid() {
 
   api.initialize({
     startOnLoad: false,
-    theme: 'neutral',
-    themeVariables: {
-      primaryColor: '#eae4f5',
-      primaryBorderColor: '#998eb5',
-      primaryTextColor: '#1f2328',
-      lineColor: '#666',
-      secondaryColor: '#eae4f5',
-      tertiaryColor: '#eae4f5',
-    },
+    ...mermaidTheme(),
   });
 
   for (const block of blocks) {
@@ -203,13 +393,19 @@ async function renderMermaid() {
       continue;
     }
 
+    destroyMermaidNav(block);
     clearError(block);
     target.innerHTML = '';
+    target.classList.remove('ghrm-mermaid-interactive');
 
     try {
       if (source.trim() === 'info') {
         const version = await getMermaidVersion(api);
         target.innerHTML = `<pre class="ghrm-mermaid-info">mermaid ${version}</pre>`;
+        const actions = block.querySelector(':scope > .ghrm-render-actions');
+        if (actions) {
+          actions.hidden = true;
+        }
         continue;
       }
 
@@ -218,6 +414,8 @@ async function renderMermaid() {
       if (typeof result.bindFunctions === 'function') {
         result.bindFunctions(target);
       }
+      ensureMermaidActions(block).hidden = false;
+      setupMermaidNav(block, target);
     } catch (error) {
       setError(block, error.message);
     }

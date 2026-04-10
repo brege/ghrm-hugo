@@ -29,6 +29,7 @@ const katex = [
 
 const files = [
   ["https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.js", "mermaid.js"],
+  ["https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.2/dist/svg-pan-zoom.min.js", "svg-pan-zoom.min.js"],
   ["https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css", "katex/katex.min.css"],
   ["https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js", "katex/katex.min.js"],
   ["https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js", "katex/auto-render.min.js"],
