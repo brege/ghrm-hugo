@@ -17,7 +17,7 @@ uninstall:
 	@echo "removed $(PREFIX)/$(BINNAME)"
 
 assets:
-	@node "$(CURDIR)/bin/assets.js"
+	@bash "$(CURDIR)/bin/assets"
 
 clean:
 	rm --recursive --force theme/gh-readme/static/vendor
