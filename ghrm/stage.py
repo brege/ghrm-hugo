@@ -161,8 +161,10 @@ class StageBuilder:
     def stage_dir_mode(self) -> set[str]:
         names: set[str] = set()
         assets: set[Path] = set()
+        sections: set[Path] = set()
         for src in markdown_files(self.target):
             rel = src.relative_to(self.target)
+            sections.update(self.parent_dirs(rel))
             source_dir = "" if rel.parent == Path(".") else rel.parent.as_posix()
             text, file_names = self.stage_markdown(
                 self.target,
@@ -173,9 +175,36 @@ class StageBuilder:
             names.update(file_names)
             assets.update(self.asset_refs(self.target, src, text))
 
+        for rel in sorted(sections):
+            self.stage_section(rel)
+
         for rel in sorted(assets):
             self.copy_asset(self.target, rel)
         return names
+
+    def parent_dirs(self, rel: Path) -> set[Path]:
+        dirs: set[Path] = set()
+        parent = rel.parent
+        while parent != Path("."):
+            dirs.add(parent)
+            parent = parent.parent
+        return dirs
+
+    def stage_section(self, rel: Path) -> None:
+        title = rel.name.replace("\\", "\\\\").replace('"', '\\"')
+        source_dir = rel.as_posix().replace("\\", "\\\\").replace('"', '\\"')
+        dst = self.content_dir / rel / "_index.md"
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_text(
+            (
+                "---\n"
+                f'title: "{title}"\n'
+                "params:\n"
+                f'  sourceDir: "{source_dir}"\n'
+                "---\n"
+            ),
+            encoding="utf-8",
+        )
 
     def reset_dir(self, path: Path) -> None:
         if path.exists():
