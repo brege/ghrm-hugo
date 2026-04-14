@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import THEME_DIR, VENDOR_DIR
-from .common import build_watcher, choose_port, is_markdown, kill_process, open_browser, real_target, sha256_text
+from .common import build_watcher, is_markdown, kill_process, open_browser, real_target, sha256_text
 from .stage import StageBuilder
 
 
@@ -34,6 +34,7 @@ class PreviewConfig:
     mode: str
     cache_home: Path
     port: int
+    bind: str
     open_browser: bool
 
     @property
@@ -75,6 +76,7 @@ class PreviewApp:
         self.hugo: subprocess.Popen[str] | None = None
         self.watcher = None
         self.lock = threading.Lock()
+        self.stopping = threading.Event()
 
     def run(self) -> int:
         self.validate()
@@ -85,9 +87,14 @@ class PreviewApp:
         self.start_hugo()
         self.wait_for_port()
         if self.config.open_browser:
-            open_browser(f"http://localhost:{self.config.port}/")
+            open_browser(f"http://{self.browser_host()}:{self.config.port}/")
         self.install_signals()
         return self.wait()
+
+    def browser_host(self) -> str:
+        if self.config.bind in {"0.0.0.0", "::"}:
+            return "localhost"
+        return self.config.bind
 
     def validate(self) -> None:
         if shutil.which("hugo") is None:
@@ -113,7 +120,11 @@ class PreviewApp:
         target.symlink_to(THEME_DIR)
 
     def sync_target(self) -> None:
+        if self.stopping.is_set():
+            return
         with self.lock:
+            if self.stopping.is_set():
+                return
             StageBuilder(
                 mode=self.config.mode,
                 target=self.config.target,
@@ -134,7 +145,7 @@ class PreviewApp:
             else '[[module.mounts]]\n  source = "static"\n  target = "static"\n'
         )
         config = (
-            f'baseURL = "http://localhost:{self.config.port}/"\n'
+            f'baseURL = "http://{self.browser_host()}:{self.config.port}/"\n'
             f'title = "{title}"\n'
             'theme = "gh-readme"\n'
             'disableKinds = ["section", "taxonomy", "term", "RSS", "sitemap", "robotsTXT", "404"]\n'
@@ -166,11 +177,12 @@ class PreviewApp:
                 "--port",
                 str(self.config.port),
                 "--bind",
-                "127.0.0.1",
+                self.config.bind,
                 "--disableFastRender",
                 "--renderToMemory",
                 "--noBuildLock",
-            ]
+            ],
+            start_new_session=True,
         )
 
     def wait_for_port(self) -> None:
@@ -181,21 +193,22 @@ class PreviewApp:
             time.sleep(0.1)
 
     def install_signals(self) -> None:
-        def handler(_signum, _frame) -> None:
-            self.stop()
-            raise SystemExit(0)
+        def handle_term(_signum, _frame) -> None:
+            raise KeyboardInterrupt
 
-        signal.signal(signal.SIGINT, handler)
-        signal.signal(signal.SIGTERM, handler)
+        signal.signal(signal.SIGTERM, handle_term)
 
     def wait(self) -> int:
         assert self.hugo is not None
         try:
             return self.hugo.wait()
+        except KeyboardInterrupt:
+            return 130
         finally:
             self.stop()
 
     def stop(self) -> None:
+        self.stopping.set()
         if self.watcher is not None:
             self.watcher.stop()
             self.watcher = None
@@ -205,7 +218,9 @@ class PreviewApp:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ghrm")
-    parser.add_argument("target")
+    parser.add_argument("target", nargs="?", default=".")
+    parser.add_argument("-p", "--port", type=int, default=1313)
+    parser.add_argument("-b", "--bind", default="127.0.0.1")
     args = parser.parse_args(argv)
 
     target = real_target(args.target)
@@ -219,13 +234,13 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"error: {target} not found")
 
     cache_home = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache")))
-    port = choose_port(int(os.environ.get("GHRM_PORT", "1313")))
     app = PreviewApp(
         PreviewConfig(
             target=target,
             mode=mode,
             cache_home=cache_home,
-            port=port,
+            port=args.port,
+            bind=args.bind,
             open_browser=os.environ.get("GHRM_OPEN", "1") != "0",
         )
     )

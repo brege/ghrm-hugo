@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import signal
 import shutil
 import threading
 import time
@@ -71,12 +72,19 @@ def choose_port(start: int) -> int:
 def kill_process(proc: subprocess.Popen[str] | None) -> None:
     if proc is None or proc.poll() is not None:
         return
-    proc.terminate()
+    try:
+        os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+    except ProcessLookupError:
+        return
     try:
         proc.wait(timeout=2)
     except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+            proc.wait(timeout=2)
+        except (ProcessLookupError, subprocess.TimeoutExpired):
+            proc.kill()
+            proc.wait()
 
 
 @dataclass

@@ -6,26 +6,27 @@ Preview GitHub-flavored Markdown locally using Hugo. Renders admonitions, Mermai
 
 People who lose internet and power often: this tool is for you. It renders Markdown the exact same way as GitHub would. If you are offline and still need to make meaningful contributions, focusing on documentation is often the cromulent choice (no coding agents, no Wikipedia/GitHub available, etc).
 
-The point of this tool is **offline preview**. Run `make install` once, then keep working with no network connection when power, internet, or both are unreliable.
+The point of this tool is **offline preview**. Install once, then keep working with no network connection when power, internet, or both are unreliable.
 
 ## Requirements
 
 - [Hugo](https://gohugo.io/) (>= 0.132)
+- [uv](https://docs.astral.sh/uv/)
 
 ## Install
 
 ```bash
-git clone https://github.com/brege/ghrm.git
-cd ghrm
-make install
+uv tool install -e git+https://github.com/brege/ghrm.git
 ```
-
-This symlinks `ghrm` into `~/.local/bin` and downloads vendor assets (Mermaid, KaTeX, Leaflet). After that bootstrap step, preview runs do not need the network.
 
 ## Usage
 
 ```bash
+# one file
 ghrm README.md
+
+# multiple files, recursively
+ghrm .
 ```
 
 Opens a live-reloading preview in your browser. Edits to the file are reflected automatically.
@@ -59,6 +60,7 @@ Commands: `:Ghrm` to start, `:GhrmStop` to stop, or just exit nvim.
 ghrm README.md
 ghrm test/basics.md
 ghrm test/diagrams.md
+ghrm .
 ```
 
 ## Uninstall
