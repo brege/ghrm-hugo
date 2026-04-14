@@ -1,6 +1,8 @@
 PREFIX  := $(HOME)/.local/bin
 BINNAME := ghrm
-SRCBIN  := $(CURDIR)/bin/ghrm
+VENV    := $(CURDIR)/.venv
+SRCBIN  := $(VENV)/bin/ghrm
+ASSETS  := $(VENV)/bin/ghrm-assets
 
 .PHONY: install uninstall assets clean
 
@@ -17,7 +19,8 @@ uninstall:
 	@echo "removed $(PREFIX)/$(BINNAME)"
 
 assets:
-	@bash "$(CURDIR)/bin/assets"
+	@uv sync
+	@"$(ASSETS)"
 
 clean:
 	rm --recursive --force theme/gh-readme/static/vendor

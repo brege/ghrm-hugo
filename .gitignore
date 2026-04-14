@@ -1,5 +1,11 @@
+# user benchmarks
 .env
+
+# hugo
 theme/gh-readme/static/vendor/
 .hugo_build.lock
 .nvimlog
+
+# python
+*egg-info
 __pycache__
