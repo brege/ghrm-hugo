@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import THEME_DIR, VENDOR_DIR
-from .common import build_watcher, is_markdown, kill_process, open_browser, real_target, sha256_text
+from .common import build_watcher, choose_port, is_markdown, kill_process, open_browser, real_target, sha256_text
 from .stage import StageBuilder
 
 
@@ -219,7 +219,7 @@ class PreviewApp:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ghrm")
     parser.add_argument("target", nargs="?", default=".")
-    parser.add_argument("-p", "--port", type=int, default=1313)
+    parser.add_argument("-p", "--port", type=int)
     parser.add_argument("-b", "--bind", default="127.0.0.1")
     args = parser.parse_args(argv)
 
@@ -234,12 +234,13 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"error: {target} not found")
 
     cache_home = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache")))
+    port = args.port if args.port is not None else choose_port(1313)
     app = PreviewApp(
         PreviewConfig(
             target=target,
             mode=mode,
             cache_home=cache_home,
-            port=args.port,
+            port=port,
             bind=args.bind,
             open_browser=os.environ.get("GHRM_OPEN", "1") != "0",
         )

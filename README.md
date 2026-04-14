@@ -16,7 +16,9 @@ The point of this tool is **offline preview**. Install once, then keep working w
 ## Install
 
 ```bash
-uv tool install -e git+https://github.com/brege/ghrm.git
+git clone https://github.com/brege/ghrm.git
+cd ghrm
+make install
 ```
 
 ## Usage
