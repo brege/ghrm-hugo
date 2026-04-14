@@ -11,21 +11,22 @@ if ! command -v hugo &>/dev/null; then
 fi
 
 if [[ $# -lt 1 ]]; then
-  echo "usage: ghrm <file.md>" >&2
+  echo "usage: ghrm <file.md | directory>" >&2
   exit 1
 fi
 
 target="$(realpath "$1")"
-target_dir="$(dirname "$target")"
-target_name="$(basename "$target")"
 
-if [[ ! -f "$target" ]]; then
+if [[ -d "$target" ]]; then
+  mode="dir"
+elif [[ -f "$target" ]]; then
+  if [[ "$target" != *.md ]]; then
+    echo "error: $target is not a markdown file" >&2
+    exit 1
+  fi
+  mode="file"
+else
   echo "error: $target not found" >&2
-  exit 1
-fi
-
-if [[ "$target" != *.md ]]; then
-  echo "error: $target is not a markdown file" >&2
   exit 1
 fi
 
@@ -72,46 +73,57 @@ while ss -tln "sport = :$port" 2>/dev/null | grep -q "$port"; do
   port=$((port + 1))
 done
 
-sync_target() {
-  cp "$target" "$tmpdir/content/_index.md"
-}
+if [[ "$mode" == "file" ]]; then
+  target_dir="$(dirname "$target")"
+  target_name="$(basename "$target")"
 
-sync_target
+  sync_target() {
+    cp "$target" "$tmpdir/content/_index.md"
+  }
 
-printf 'baseURL = "http://localhost:%d/"\ntitle = "README Preview"\ntheme = "gh-readme"\ndisableKinds = ["taxonomy", "term", "RSS", "sitemap", "robotsTXT", "404"]\nenableEmoji = true\n\n[markup.goldmark.renderer]\n  unsafe = true\n\n[markup.goldmark.extensions]\n  strikethrough = true\n  linkify = true\n  taskList = true\n  footnote = true\n  typographer = true\n\n[markup.highlight]\n  noClasses = false\n\n[[module.mounts]]\n  source = "themes/gh-readme/assets"\n  target = "assets"\n\n[[module.mounts]]\n  source = "%s"\n  target = "static"\n' "$port" "$target_dir" > "$tmpdir/hugo.toml"
+  sync_target
 
-if command -v inotifywait &>/dev/null; then
-  (
-    while read -r changed; do
-      if [[ "$changed" == "$target_name" ]] && [[ -f "$target" ]]; then
-        sync_target
-      fi
-    done < <(
-      inotifywait \
-        --monitor \
-        --quiet \
-        --event close_write,moved_to,create \
-        --format '%f' \
-        "$target_dir"
-    )
-  ) &
-  watch_pid=$!
+  printf 'baseURL = "http://localhost:%d/"\ntitle = "README Preview"\ntheme = "gh-readme"\ndisableKinds = ["taxonomy", "term", "RSS", "sitemap", "robotsTXT", "404"]\nenableEmoji = true\n\n[markup.goldmark.renderer]\n  unsafe = true\n\n[markup.goldmark.extensions]\n  strikethrough = true\n  linkify = true\n  taskList = true\n  footnote = true\n  typographer = true\n\n[markup.highlight]\n  noClasses = false\n\n[[module.mounts]]\n  source = "themes/gh-readme/assets"\n  target = "assets"\n\n[[module.mounts]]\n  source = "%s"\n  target = "static"\n' "$port" "$target_dir" > "$tmpdir/hugo.toml"
+
+  if command -v inotifywait &>/dev/null; then
+    (
+      while read -r changed; do
+        if [[ "$changed" == "$target_name" ]] && [[ -f "$target" ]]; then
+          sync_target
+        fi
+      done < <(
+        inotifywait \
+          --monitor \
+          --quiet \
+          --event close_write,moved_to,create \
+          --format '%f' \
+          "$target_dir"
+      )
+    ) &
+    watch_pid=$!
+  else
+    (
+      last_mtime="$(stat --format '%Y' "$target")"
+      while true; do
+        sleep 1
+        if [[ ! -f "$target" ]]; then
+          continue
+        fi
+        current_mtime="$(stat --format '%Y' "$target")"
+        if [[ "$current_mtime" != "$last_mtime" ]]; then
+          sync_target
+          last_mtime="$current_mtime"
+        fi
+      done
+    ) &
+    watch_pid=$!
+  fi
 else
-  (
-    last_mtime="$(stat --format '%Y' "$target")"
-    while true; do
-      sleep 1
-      if [[ ! -f "$target" ]]; then
-        continue
-      fi
-      current_mtime="$(stat --format '%Y' "$target")"
-      if [[ "$current_mtime" != "$last_mtime" ]]; then
-        sync_target
-        last_mtime="$current_mtime"
-      fi
-    done
-  ) &
-  watch_pid=$!
+  dir_name="$(basename "$target")"
+
+  printf -- '---\ntitle: "%s"\n---\n' "$dir_name" > "$tmpdir/content/_index.md"
+
+  printf 'baseURL = "http://localhost:%d/"\ntitle = "%s"\ntheme = "gh-readme"\ndisableKinds = ["taxonomy", "term", "RSS", "sitemap", "robotsTXT", "404"]\nenableEmoji = true\nignoreFiles = ["\\\\.venv/", "\\\\.claude/", "node_modules/", "\\\\.git/"]\n\n[markup.goldmark.renderer]\n  unsafe = true\n\n[markup.goldmark.extensions]\n  strikethrough = true\n  linkify = true\n  taskList = true\n  footnote = true\n  typographer = true\n\n[markup.highlight]\n  noClasses = false\n\n[[module.mounts]]\n  source = "themes/gh-readme/assets"\n  target = "assets"\n\n[[module.mounts]]\n  source = "content"\n  target = "content"\n\n[[module.mounts]]\n  source = "%s"\n  target = "content"\n\n[[module.mounts]]\n  source = "%s"\n  target = "static"\n' "$port" "$dir_name" "$target" "$target" > "$tmpdir/hugo.toml"
 fi
 
 hugo server --source "$tmpdir" --port "$port" --bind 127.0.0.1 --disableFastRender &

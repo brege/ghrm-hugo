@@ -1,3 +1,16 @@
 {{ define "main" }}
+{{ if .Site.RegularPages }}
+<article class="markdown-body">
+  <h1>{{ .Title }}</h1>
+  <ul>
+    {{ range sort .Site.RegularPages "File.Path" }}
+    {{ if strings.HasSuffix .File.Path ".md" }}
+    <li><a href="{{ .RelPermalink }}">{{ .File.Path }}</a></li>
+    {{ end }}
+    {{ end }}
+  </ul>
+</article>
+{{ else }}
 {{ partial "content.html" . }}
+{{ end }}
 {{ end }}
