@@ -4,6 +4,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 THEME_DIR="$SCRIPT_DIR/../theme/gh-readme"
 VENDOR_DIR="$THEME_DIR/static/vendor"
+VENV_PYTHON="$SCRIPT_DIR/../.venv/bin/python"
+
+if [[ -x "$VENV_PYTHON" ]]; then
+  PYTHON_BIN="$VENV_PYTHON"
+elif command -v python &>/dev/null; then
+  PYTHON_BIN="$(command -v python)"
+else
+  echo "error: python not found in PATH" >&2
+  exit 1
+fi
 
 if ! command -v hugo &>/dev/null; then
   echo "error: hugo not found in PATH" >&2
@@ -39,6 +49,8 @@ target_key="$(
 SITE_DIR="$CACHE_DIR/sites/$target_key"
 CONTENT_DIR="$SITE_DIR/content"
 STATIC_DIR="$SITE_DIR/static"
+LAYOUTS_DIR="$SITE_DIR/layouts"
+SHORTCODES_DIR="$LAYOUTS_DIR/shortcodes"
 
 required_assets=(
   "$VENDOR_DIR/mermaid.js"
@@ -73,7 +85,12 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-mkdir --parents "$CONTENT_DIR" "$STATIC_DIR" "$SITE_DIR/themes" "$HUGO_CACHE_DIR"
+mkdir --parents \
+  "$CONTENT_DIR" \
+  "$STATIC_DIR" \
+  "$SITE_DIR/themes" \
+  "$HUGO_CACHE_DIR" \
+  "$SHORTCODES_DIR"
 ln --symbolic --force --no-target-directory \
   "$THEME_DIR" \
   "$SITE_DIR/themes/gh-readme"
@@ -117,43 +134,18 @@ list_markdown_files() {
   )
 }
 
-strip_front_matter() {
-  local src="$1"
-  local dst="$2"
-  local first_line=""
-
-  if ! IFS= read -r first_line < "$src"; then
-    : > "$dst"
-    return
-  fi
-
-  case "$first_line" in
-    "---")
-      if tail --lines=+2 "$src" \
-        | grep --quiet --extended-regexp '^(---|\.\.\.)$'; then
-        sed '1,/^\(---\|\.\.\.\)$/d' "$src" > "$dst"
-        return
-      fi
-      ;;
-    "+++")
-      if tail --lines=+2 "$src" \
-        | grep --quiet --extended-regexp '^\+\+\+$'; then
-        sed '1,/^\+\+\+$/d' "$src" > "$dst"
-        return
-      fi
-      ;;
-  esac
-
-  cp --force "$src" "$dst"
+sync_target() {
+  "$PYTHON_BIN" "$SCRIPT_DIR/stage.py" \
+    --mode "$mode" \
+    --target "$target" \
+    --content-dir "$CONTENT_DIR" \
+    --shortcodes-dir "$SHORTCODES_DIR" \
+    --static-dir "$STATIC_DIR"
 }
 
 if [[ "$mode" == "file" ]]; then
   target_dir="$(dirname "$target")"
   target_name="$(basename "$target")"
-
-  sync_target() {
-    cp --force "$target" "$CONTENT_DIR/_index.md"
-  }
 
   sync_target
 
@@ -194,21 +186,6 @@ if [[ "$mode" == "file" ]]; then
   fi
 else
   dir_name="$(basename "$target")"
-
-  sync_target() {
-    local rel=""
-    local dst=""
-
-    find "$CONTENT_DIR" -mindepth 1 -delete
-    find "$STATIC_DIR" -mindepth 1 -delete
-
-    while IFS= read -r -d '' rel; do
-      rel="${rel#./}"
-      dst="$CONTENT_DIR/$rel"
-      mkdir --parents "$(dirname "$dst")"
-      strip_front_matter "$target/$rel" "$dst"
-    done < <(list_markdown_files)
-  }
 
   sync_target
 

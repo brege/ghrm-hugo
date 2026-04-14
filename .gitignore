@@ -2,3 +2,4 @@
 theme/gh-readme/static/vendor/
 .hugo_build.lock
 .nvimlog
+__pycache__

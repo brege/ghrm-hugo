@@ -1,0 +1,25 @@
+{{- $dest := .dest -}}
+{{- $page := .page -}}
+{{- $u := urls.Parse $dest -}}
+{{- if or $u.Scheme $u.Host (strings.HasPrefix $u.Path "/") (eq $u.Path "") -}}
+  {{- $dest -}}
+{{- else -}}
+  {{- $sourceDir := $page.Params.sourceDir | default "" -}}
+  {{- $resolved := path.Clean (path.Join "/" $sourceDir $u.Path) -}}
+  {{- if strings.HasSuffix $u.Path ".md" -}}
+    {{- with site.GetPage (strings.TrimPrefix "/" $resolved) -}}
+      {{- .RelPermalink -}}
+    {{- else -}}
+      {{- $dest -}}
+    {{- end -}}
+  {{- else -}}
+    {{- $suffix := "" -}}
+    {{- if $u.RawQuery -}}
+      {{- $suffix = printf "%s?%s" $suffix $u.RawQuery -}}
+    {{- end -}}
+    {{- if $u.Fragment -}}
+      {{- $suffix = printf "%s#%s" $suffix $u.Fragment -}}
+    {{- end -}}
+    {{- printf "%s%s" $resolved $suffix -}}
+  {{- end -}}
+{{- end -}}

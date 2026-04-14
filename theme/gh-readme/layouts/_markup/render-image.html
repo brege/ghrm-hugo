@@ -1,0 +1,2 @@
+{{- $src := partial "resolve.html" (dict "dest" .Destination "page" .Page) -}}
+<img src="{{ $src }}" alt="{{ .PlainText }}"{{ with .Title }} title="{{ . }}"{{ end }}>
