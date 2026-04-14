@@ -1,19 +1,6 @@
 {{ define "main" }}
 {{ if .Site.Params.dirMode }}
-<article class="markdown-body">
-  <h1>{{ .Title }}</h1>
-  {{ if .Site.RegularPages }}
-  <ul>
-    {{ range sort .Site.RegularPages "File.Path" }}
-    {{ if strings.HasSuffix .File.Path ".md" }}
-    <li><a href="{{ .RelPermalink }}">{{ .File.Path }}</a></li>
-    {{ end }}
-    {{ end }}
-  </ul>
-  {{ else }}
-  <p>No markdown files found.</p>
-  {{ end }}
-</article>
+{{ partial "nav.html" . }}
 {{ else }}
 {{ partial "content.html" . }}
 {{ end }}

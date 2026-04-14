@@ -139,6 +139,11 @@ class PreviewApp:
     def write_config(self) -> None:
         title = self.config.target.name if self.config.mode == "dir" else "README Preview"
         params = '\n[params]\n  dirMode = true\n' if self.config.mode == "dir" else "\n"
+        disable_kinds = (
+            'disableKinds = ["taxonomy", "term", "RSS", "sitemap", "robotsTXT", "404"]\n'
+            if self.config.mode == "dir"
+            else 'disableKinds = ["section", "taxonomy", "term", "RSS", "sitemap", "robotsTXT", "404"]\n'
+        )
         static_mount = (
             f'[[module.mounts]]\n  source = "{self.config.target.parent}"\n  target = "static"\n'
             if self.config.mode == "file"
@@ -148,7 +153,7 @@ class PreviewApp:
             f'baseURL = "http://{self.browser_host()}:{self.config.port}/"\n'
             f'title = "{title}"\n'
             'theme = "gh-readme"\n'
-            'disableKinds = ["section", "taxonomy", "term", "RSS", "sitemap", "robotsTXT", "404"]\n'
+            f"{disable_kinds}"
             'enableEmoji = true\n'
             f"{params}"
             '[markup.goldmark.renderer]\n  unsafe = true\n\n'
