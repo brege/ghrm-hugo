@@ -134,6 +134,42 @@ list_markdown_files() {
   )
 }
 
+list_markdown_files_in() {
+  local root="$1"
+
+  if command -v fd &>/dev/null; then
+    (
+      cd "$root"
+      fd \
+        --type file \
+        --extension md \
+        --extension MD \
+        --hidden \
+        --no-ignore \
+        --exclude .git \
+        --exclude .claude \
+        --exclude .venv \
+        --exclude node_modules \
+        --print0 \
+        .
+    )
+    return
+  fi
+
+  (
+    cd "$root"
+    find \
+      . \
+      -type f \
+      \( -name '*.md' -o -name '*.MD' \) \
+      ! -path './.git/*' \
+      ! -path './.claude/*' \
+      ! -path './.venv/*' \
+      ! -path './node_modules/*' \
+      -print0
+  )
+}
+
 sync_target() {
   "$PYTHON_BIN" "$SCRIPT_DIR/stage.py" \
     --mode "$mode" \
@@ -154,31 +190,35 @@ if [[ "$mode" == "file" ]]; then
   if command -v inotifywait &>/dev/null; then
     (
       while read -r changed; do
-        if [[ "$changed" == "$target_name" ]] && [[ -f "$target" ]]; then
+        if [[ "$changed" == *.md || "$changed" == *.MD ]] && [[ -f "$target" ]]; then
           sync_target
         fi
       done < <(
         inotifywait \
           --monitor \
+          --recursive \
           --quiet \
-          --event close_write,moved_to,create \
-          --format '%f' \
+          --event close_write,moved_to,create,delete \
+          --format '%w%f' \
           "$target_dir"
       )
     ) &
     watch_pid=$!
   else
     (
-      last_mtime="$(stat --format '%Y' "$target")"
+      last_state="$(
+        list_markdown_files_in "$target_dir" \
+          | xargs --null stat --format '%Y %n' 2>/dev/null || true
+      )"
       while true; do
         sleep 1
-        if [[ ! -f "$target" ]]; then
-          continue
-        fi
-        current_mtime="$(stat --format '%Y' "$target")"
-        if [[ "$current_mtime" != "$last_mtime" ]]; then
+        current_state="$(
+          list_markdown_files_in "$target_dir" \
+            | xargs --null stat --format '%Y %n' 2>/dev/null || true
+        )"
+        if [[ "$current_state" != "$last_state" ]]; then
           sync_target
-          last_mtime="$current_mtime"
+          last_state="$current_state"
         fi
       done
     ) &

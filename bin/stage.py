@@ -5,6 +5,7 @@ import argparse
 import os
 import shutil
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -31,6 +32,81 @@ class Tag:
     markup: str
     closing: bool
     self_closing: bool
+
+
+class HtmlRefs(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.refs: set[str] = set()
+
+    def handle_starttag(self, _tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._collect(attrs)
+
+    def handle_startendtag(self, _tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._collect(attrs)
+
+    def _collect(self, attrs: list[tuple[str, str | None]]) -> None:
+        for name, value in attrs:
+            if name not in {"href", "src"} or not value:
+                continue
+            self.refs.add(value)
+
+
+class HtmlRewrite(HTMLParser):
+    def __init__(self, root: Path, src: Path) -> None:
+        super().__init__(convert_charrefs=False)
+        self.root = root
+        self.src = src
+        self.out: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.out.append(self._tag(tag, attrs, False))
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.out.append(self._tag(tag, attrs, True))
+
+    def handle_endtag(self, tag: str) -> None:
+        self.out.append(f"</{tag}>")
+
+    def handle_data(self, data: str) -> None:
+        self.out.append(data)
+
+    def handle_comment(self, data: str) -> None:
+        self.out.append(f"<!--{data}-->")
+
+    def handle_decl(self, decl: str) -> None:
+        self.out.append(f"<!{decl}>")
+
+    def handle_entityref(self, name: str) -> None:
+        self.out.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        self.out.append(f"&#{name};")
+
+    def handle_pi(self, data: str) -> None:
+        self.out.append(f"<?{data}>")
+
+    def unknown_decl(self, data: str) -> None:
+        self.out.append(f"<![{data}]>")
+
+    def rewritten(self) -> str:
+        return "".join(self.out)
+
+    def _tag(self, tag: str, attrs: list[tuple[str, str | None]], self_closing: bool) -> str:
+        parts = [f"<{tag}"]
+        for name, value in attrs:
+            if value is None:
+                parts.append(f" {name}")
+                continue
+
+            if name in {"href", "src"}:
+                value = local_url(self.root, self.src, value)
+
+            escaped = value.replace("&", "&amp;").replace('"', "&quot;")
+            parts.append(f' {name}="{escaped}"')
+
+        parts.append(" />" if self_closing else ">")
+        return "".join(parts)
 
 
 def parse_args() -> argparse.Namespace:
@@ -182,8 +258,9 @@ def stage_text(text: str, source_dir: str | None) -> tuple[str, set[str]]:
     return "".join(staged), names
 
 
-def stage_markdown(src: Path, dst: Path, source_dir: str | None) -> tuple[str, set[str]]:
+def stage_markdown(root: Path, src: Path, dst: Path, source_dir: str | None) -> tuple[str, set[str]]:
     text = src.read_text(encoding="utf-8")
+    text = rewrite_html(root, src, text)
     staged, names = stage_text(text, source_dir)
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text(staged, encoding="utf-8")
@@ -222,6 +299,93 @@ def relative_target(root: Path, src: Path, dest: str) -> Path | None:
         return None
 
 
+def page_url(root: Path, rel: Path) -> str | None:
+    path = root / rel
+    if path.is_dir():
+        for name in (
+            "README.md",
+            "README.MD",
+            "readme.md",
+            "readme.MD",
+            "index.md",
+            "index.MD",
+        ):
+            candidate = rel / name
+            if (root / candidate).is_file():
+                rel = candidate
+                break
+        else:
+            return None
+
+    if rel.suffix.lower() != ".md":
+        return None
+
+    stem = rel.with_suffix("")
+    if rel.name.lower() == "readme.md":
+        if stem.parent == Path("."):
+            return "/readme/"
+        return f"/{stem.parent.as_posix()}/readme/"
+
+    return f"/{stem.as_posix()}/"
+
+
+def local_url(root: Path, src: Path, dest: str) -> str:
+    parts = urlsplit(dest)
+    if parts.scheme or parts.netloc or not parts.path or parts.path.startswith("/"):
+        return dest
+
+    rel = relative_target(root, src, dest)
+    if rel is None:
+        return dest
+
+    suffix = ""
+    if parts.query:
+        suffix = f"{suffix}?{parts.query}"
+    if parts.fragment:
+        suffix = f"{suffix}#{parts.fragment}"
+
+    page = page_url(root, rel)
+    if page is not None:
+        return f"{page}{suffix}"
+
+    return f"/{rel.as_posix()}{suffix}"
+
+
+def rewrite_html(root: Path, src: Path, text: str) -> str:
+    tokens = MD.parse(text)
+    fragments: list[str] = []
+
+    for token in tokens:
+        if token.type == "html_block":
+            fragments.append(token.content)
+            continue
+
+        if token.type != "inline":
+            continue
+
+        for child in token.children or []:
+            if child.type == "html_inline":
+                fragments.append(child.content)
+
+    out: list[str] = []
+    cursor = 0
+    for fragment in fragments:
+        start = text.find(fragment, cursor)
+        if start == -1:
+            continue
+
+        parser = HtmlRewrite(root, src)
+        parser.feed(fragment)
+        parser.close()
+
+        out.append(text[cursor:start])
+        out.append(parser.rewritten())
+        cursor = start + len(fragment)
+
+    out.append(text[cursor:])
+    return "".join(out)
+
+
 def asset_refs(root: Path, src: Path, text: str) -> set[Path]:
     refs: set[Path] = set()
     tokens = MD.parse(text)
@@ -238,6 +402,49 @@ def asset_refs(root: Path, src: Path, text: str) -> set[Path]:
 
         rel = relative_target(root, src, dest)
         if rel is None or rel.suffix.lower() == ".md":
+            continue
+
+        refs.add(rel)
+
+    for token in tokens:
+        if token.type not in {"html_block", "inline"}:
+            continue
+
+        html_tokens = [token]
+        if token.type == "inline":
+            html_tokens = [
+                child
+                for child in token.children or []
+                if child.type == "html_inline"
+            ]
+
+        for html_token in html_tokens:
+            parser = HtmlRefs()
+            parser.feed(html_token.content)
+            parser.close()
+
+            for dest in parser.refs:
+                rel = relative_target(root, src, dest)
+                if rel is None or rel.suffix.lower() == ".md":
+                    continue
+                refs.add(rel)
+
+    return refs
+
+
+def markdown_refs(root: Path, src: Path, text: str) -> set[Path]:
+    refs: set[Path] = set()
+    tokens = MD.parse(text)
+    for token in inline_tokens(tokens):
+        if token.type != "link_open":
+            continue
+
+        dest = token_attr(token, "href")
+        if not dest:
+            continue
+
+        rel = relative_target(root, src, dest)
+        if rel is None or rel.suffix.lower() != ".md":
             continue
 
         refs.add(rel)
@@ -275,13 +482,32 @@ def main() -> int:
     names: set[str] = set()
 
     if args.mode == "file":
-        _, file_names = stage_markdown(target, content_dir / "_index.md", None)
-        names.update(file_names)
+        root = target.parent
+        root_rel = target.relative_to(root)
+        staged: set[Path] = set()
+        pending = [root_rel]
+
+        while pending:
+            rel = pending.pop()
+            if rel in staged:
+                continue
+
+            src = root / rel
+            source_dir = rel.parent.as_posix() if rel.parent != Path(".") else ""
+            dst = content_dir / ("_index.md" if rel == root_rel else rel)
+            text, file_names = stage_markdown(root, src, dst, source_dir)
+            names.update(file_names)
+            staged.add(rel)
+
+            for ref in sorted(markdown_refs(root, src, text), reverse=True):
+                if ref not in staged:
+                    pending.append(ref)
     else:
         assets: set[Path] = set()
         for src in markdown_files(target):
             rel = src.relative_to(target)
             text, file_names = stage_markdown(
+                target,
                 src,
                 content_dir / rel,
                 rel.parent.as_posix() if rel.parent != Path(".") else "",

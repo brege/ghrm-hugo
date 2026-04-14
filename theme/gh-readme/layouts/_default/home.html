@@ -1,5 +1,5 @@
 {{ define "main" }}
-{{ if or .Site.RegularPages .Site.Params.dirMode }}
+{{ if .Site.Params.dirMode }}
 <article class="markdown-body">
   <h1>{{ .Title }}</h1>
   {{ if .Site.RegularPages }}
