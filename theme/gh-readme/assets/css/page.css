@@ -70,12 +70,41 @@ body {
   color: var(--fgColor-default, #1f2328);
 }
 
-.ghrm-nav-table {
+/* github-markdown.css sets display:block and width:max-content on all tables */
+.markdown-body .ghrm-nav-table {
+  display: table;
   width: 100%;
   border-collapse: collapse;
   border: 1px solid var(--borderColor-default, #d0d7de);
   border-radius: 6px;
   overflow: hidden;
+}
+
+.ghrm-readme-box {
+  margin-top: 16px;
+  border: 1px solid var(--borderColor-default, #d0d7de);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.ghrm-readme-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bgColor-muted, #f6f8fa);
+  border-bottom: 1px solid var(--borderColor-default, #d0d7de);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fgColor-default, #1f2328);
+}
+
+.ghrm-readme-header svg {
+  flex-shrink: 0;
+}
+
+.ghrm-readme-content {
+  padding: 24px 32px;
 }
 
 .ghrm-nav-table tbody tr:nth-child(odd) {
