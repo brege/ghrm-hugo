@@ -28,9 +28,10 @@
   </script>
   {{- $gh := resources.Get "css/github-markdown.css" -}}
   {{- $adm := resources.Get "css/admonitions.css" -}}
+  {{- $chroma := resources.Get "css/chroma.css" -}}
   {{- $page := resources.Get "css/page.css" -}}
   {{- $features := resources.Get "css/features.css" -}}
-  {{- $bundle := slice $gh $adm $page $features | resources.Concat "css/bundle.css" -}}
+  {{- $bundle := slice $gh $adm $chroma $page $features | resources.Concat "css/bundle.css" -}}
   <link rel="stylesheet" href="{{ $bundle.RelPermalink }}">
 </head>
 <body>

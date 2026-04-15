@@ -1,0 +1,176 @@
+.markdown-body .chroma {
+  color: var(--fgColor-default);
+  -webkit-text-size-adjust: none;
+}
+
+.markdown-body .chroma .lnlinks {
+  color: inherit;
+  outline: none;
+  text-decoration: none;
+}
+
+.markdown-body .chroma .lntable,
+.markdown-body .chroma .lntd {
+  border: 0;
+  border-spacing: 0;
+  margin: 0;
+  padding: 0;
+  vertical-align: top;
+}
+
+.markdown-body .chroma .hl {
+  display: block;
+  background-color: var(--bgColor-neutral-muted);
+}
+
+.markdown-body .chroma .ln,
+.markdown-body .chroma .lnt {
+  color: var(--fgColor-muted);
+  margin-right: 0.4em;
+  padding: 0 0.4em 0 0.4em;
+  user-select: none;
+  white-space: pre;
+}
+
+.markdown-body .chroma .line {
+  display: flex;
+}
+
+.markdown-body .chroma .err {
+  color: var(--color-prettylights-syntax-invalid-illegal-text);
+  background-color: var(--color-prettylights-syntax-invalid-illegal-bg);
+}
+
+.markdown-body .chroma .c,
+.markdown-body .chroma .ch,
+.markdown-body .chroma .cm,
+.markdown-body .chroma .c1,
+.markdown-body .chroma .cs,
+.markdown-body .chroma .cp,
+.markdown-body .chroma .cpf {
+  color: var(--color-prettylights-syntax-comment);
+  font-style: italic;
+}
+
+.markdown-body .chroma .k,
+.markdown-body .chroma .kc,
+.markdown-body .chroma .kd,
+.markdown-body .chroma .kn,
+.markdown-body .chroma .kp,
+.markdown-body .chroma .kr,
+.markdown-body .chroma .kt,
+.markdown-body .chroma .o,
+.markdown-body .chroma .ow,
+.markdown-body .chroma .nn {
+  color: var(--color-prettylights-syntax-keyword);
+}
+
+.markdown-body .chroma .o,
+.markdown-body .chroma .ow,
+.markdown-body .chroma .nc,
+.markdown-body .chroma .ne,
+.markdown-body .chroma .nd,
+.markdown-body .chroma .nf,
+.markdown-body .chroma .fm,
+.markdown-body .chroma .no,
+.markdown-body .chroma .nl {
+  font-weight: 600;
+}
+
+.markdown-body .chroma .na,
+.markdown-body .chroma .nx,
+.markdown-body .chroma .p,
+.markdown-body .chroma .go {
+  color: var(--fgColor-default);
+}
+
+.markdown-body .chroma .nb,
+.markdown-body .chroma .nc,
+.markdown-body .chroma .nd,
+.markdown-body .chroma .ne,
+.markdown-body .chroma .nf,
+.markdown-body .chroma .fm,
+.markdown-body .chroma .ni {
+  color: var(--color-prettylights-syntax-entity);
+}
+
+.markdown-body .chroma .nt {
+  color: var(--color-prettylights-syntax-entity-tag);
+}
+
+.markdown-body .chroma .no,
+.markdown-body .chroma .m,
+.markdown-body .chroma .mb,
+.markdown-body .chroma .mf,
+.markdown-body .chroma .mh,
+.markdown-body .chroma .mi,
+.markdown-body .chroma .il,
+.markdown-body .chroma .mo,
+.markdown-body .chroma .l,
+.markdown-body .chroma .ld {
+  color: var(--color-prettylights-syntax-constant);
+}
+
+.markdown-body .chroma .nv,
+.markdown-body .chroma .vc,
+.markdown-body .chroma .vg,
+.markdown-body .chroma .vi,
+.markdown-body .chroma .vm,
+.markdown-body .chroma .py {
+  color: var(--color-prettylights-syntax-variable);
+}
+
+.markdown-body .chroma .s,
+.markdown-body .chroma .sa,
+.markdown-body .chroma .sb,
+.markdown-body .chroma .sc,
+.markdown-body .chroma .dl,
+.markdown-body .chroma .sd,
+.markdown-body .chroma .s2,
+.markdown-body .chroma .se,
+.markdown-body .chroma .sh,
+.markdown-body .chroma .si,
+.markdown-body .chroma .sx,
+.markdown-body .chroma .sr,
+.markdown-body .chroma .s1,
+.markdown-body .chroma .ss {
+  color: var(--color-prettylights-syntax-string);
+}
+
+.markdown-body .chroma .gd {
+  color: var(--color-prettylights-syntax-markup-deleted-text);
+  background-color: var(--color-prettylights-syntax-markup-deleted-bg);
+}
+
+.markdown-body .chroma .gi {
+  color: var(--color-prettylights-syntax-markup-inserted-text);
+  background-color: var(--color-prettylights-syntax-markup-inserted-bg);
+}
+
+.markdown-body .chroma .gh,
+.markdown-body .chroma .gu {
+  color: var(--color-prettylights-syntax-markup-heading);
+  font-weight: 600;
+}
+
+.markdown-body .chroma .ge {
+  font-style: italic;
+}
+
+.markdown-body .chroma .gs {
+  font-weight: 600;
+}
+
+.markdown-body .chroma .gl {
+  text-decoration: underline;
+}
+
+.markdown-body .chroma .gr,
+.markdown-body .chroma .gt {
+  color: var(--fgColor-danger);
+}
+
+.markdown-body .chroma .gp,
+.markdown-body .chroma .w {
+  color: var(--fgColor-muted);
+}
