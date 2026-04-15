@@ -6,12 +6,11 @@ import signal
 import shutil
 import subprocess
 import threading
-import time
 from dataclasses import dataclass
 from pathlib import Path
 
 from . import THEME_DIR, VENDOR_DIR
-from .common import build_watcher, choose_port, is_markdown, kill_process, open_browser, real_target, sha256_text
+from .common import build_watcher, choose_port, is_markdown, kill_process, real_target, sha256_text
 from .stage import StageBuilder
 
 
@@ -85,9 +84,6 @@ class PreviewApp:
         self.write_config()
         self.watcher = build_watcher(self.watch_root(), self.sync_target)
         self.start_hugo()
-        self.wait_for_port()
-        if self.config.open_browser:
-            open_browser(f"http://{self.browser_host()}:{self.config.port}/")
         self.install_signals()
         return self.wait()
 
@@ -171,31 +167,24 @@ class PreviewApp:
         (self.config.site_dir / "hugo.toml").write_text(config, encoding="utf-8")
 
     def start_hugo(self) -> None:
-        self.hugo = subprocess.Popen(
-            [
-                "hugo",
-                "server",
-                "--source",
-                str(self.config.site_dir),
-                "--cacheDir",
-                str(self.config.hugo_cache_dir),
-                "--port",
-                str(self.config.port),
-                "--bind",
-                self.config.bind,
-                "--disableFastRender",
-                "--renderToMemory",
-                "--noBuildLock",
-            ],
-            start_new_session=True,
-        )
-
-    def wait_for_port(self) -> None:
-        deadline = time.monotonic() + 3
-        while time.monotonic() < deadline:
-            if self.hugo is not None and self.hugo.poll() is not None:
-                raise SystemExit(self.hugo.returncode or 1)
-            time.sleep(0.1)
+        cmd = [
+            "hugo",
+            "server",
+            "--source",
+            str(self.config.site_dir),
+            "--cacheDir",
+            str(self.config.hugo_cache_dir),
+            "--port",
+            str(self.config.port),
+            "--bind",
+            self.config.bind,
+            "--disableFastRender",
+            "--renderToMemory",
+            "--noBuildLock",
+        ]
+        if self.config.open_browser:
+            cmd.append("--openBrowser")
+        self.hugo = subprocess.Popen(cmd, start_new_session=True)
 
     def install_signals(self) -> None:
         def handle_term(_signum, _frame) -> None:

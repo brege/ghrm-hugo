@@ -5,7 +5,6 @@ import os
 import signal
 import shutil
 import threading
-import time
 from dataclasses import dataclass
 from pathlib import Path
 import subprocess
@@ -172,23 +171,3 @@ def build_watcher(root: Path, on_change: callable):
     watcher = PollWatcher(root, on_change)
     watcher.start()
     return watcher
-
-
-def open_browser(url: str) -> None:
-    opener = find_binary("xdg-open")
-    if opener is None:
-        return
-    subprocess.Popen(
-        [opener, url],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
-
-def wait_for_ready(log: Path, timeout_seconds: int) -> None:
-    deadline = time.monotonic() + timeout_seconds
-    while time.monotonic() < deadline:
-        if log.exists() and "Web Server is available at" in log.read_text():
-            return
-        time.sleep(0.02)
-    raise TimeoutError(f"timed out waiting for ready state: {log}")
