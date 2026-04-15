@@ -218,11 +218,12 @@ class StageBuilder:
         dst: Path,
         source_dir: str | None,
     ) -> tuple[str, set[str]]:
-        text = self.rewrite_html(root, src, src.read_text(encoding="utf-8"))
+        raw = src.read_text(encoding="utf-8")
+        text = self.rewrite_html(root, src, raw)
         staged, names = self.stage_text(text, source_dir)
         dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_text(staged, encoding="utf-8")
-        return text, names
+        return raw, names
 
     def stage_text(self, text: str, source_dir: str | None) -> tuple[str, set[str]]:
         tags = self.find_tags(text)
