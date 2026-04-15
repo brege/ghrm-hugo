@@ -13,8 +13,6 @@ dependencies = [
 
 [project.scripts]
 ghrm = "ghrm.preview:main"
-ghrm-assets = "ghrm.assets:main"
-ghrm-bench = "ghrm.bench:main"
 
 [tool.setuptools]
 packages = ["ghrm"]

@@ -158,3 +158,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     open_browser = True if args.open_browser else None
     return BenchRunner(open_browser=open_browser).run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

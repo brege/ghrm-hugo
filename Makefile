@@ -2,7 +2,6 @@ PREFIX  := $(HOME)/.local/bin
 BINNAME := ghrm
 VENV    := $(CURDIR)/.venv
 SRCBIN  := $(VENV)/bin/ghrm
-ASSETS  := $(VENV)/bin/ghrm-assets
 
 .PHONY: install uninstall assets clean
 
@@ -20,7 +19,7 @@ uninstall:
 
 assets:
 	@uv sync
-	@"$(ASSETS)"
+	@uv run python -m ghrm.assets
 
 clean:
 	rm --recursive --force theme/gh-readme/static/vendor

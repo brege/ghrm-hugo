@@ -1,176 +1,350 @@
-.markdown-body .chroma {
-  color: var(--fgColor-default);
+/* Generated from:
+ *   hugo gen chromastyles --style=github
+ *   hugo gen chromastyles --style=github-dark
+ *
+ * The surrounding code-block chrome stays in github-markdown.css.
+ * This file only supplies Chroma token colors and line layout.
+ */
+
+:root[data-theme="light"] .markdown-body .chroma {
   -webkit-text-size-adjust: none;
 }
 
-.markdown-body .chroma .lnlinks {
+:root[data-theme="light"] .markdown-body .chroma .err {
+  color: #f6f8fa;
+  background-color: #82071e;
+}
+
+:root[data-theme="light"] .markdown-body .chroma .lnlinks {
   color: inherit;
   outline: none;
   text-decoration: none;
 }
 
-.markdown-body .chroma .lntable,
-.markdown-body .chroma .lntd {
-  border: 0;
-  border-spacing: 0;
-  margin: 0;
-  padding: 0;
+:root[data-theme="light"] .markdown-body .chroma .lntd {
   vertical-align: top;
+  padding: 0;
+  margin: 0;
+  border: 0;
 }
 
-.markdown-body .chroma .hl {
-  display: block;
-  background-color: var(--bgColor-neutral-muted);
+:root[data-theme="light"] .markdown-body .chroma .lntable {
+  border-spacing: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
 }
 
-.markdown-body .chroma .ln,
-.markdown-body .chroma .lnt {
-  color: var(--fgColor-muted);
+:root[data-theme="light"] .markdown-body .chroma .hl {
+  background-color: #dedede;
+}
+
+:root[data-theme="light"] .markdown-body .chroma .lnt,
+:root[data-theme="light"] .markdown-body .chroma .ln {
+  white-space: pre;
+  user-select: none;
   margin-right: 0.4em;
   padding: 0 0.4em 0 0.4em;
-  user-select: none;
-  white-space: pre;
+  color: #7f7f7f;
 }
 
-.markdown-body .chroma .line {
+:root[data-theme="light"] .markdown-body .chroma .line {
   display: flex;
 }
 
-.markdown-body .chroma .err {
-  color: var(--color-prettylights-syntax-invalid-illegal-text);
-  background-color: var(--color-prettylights-syntax-invalid-illegal-bg);
+:root[data-theme="light"] .markdown-body .chroma .k,
+:root[data-theme="light"] .markdown-body .chroma .kc,
+:root[data-theme="light"] .markdown-body .chroma .kd,
+:root[data-theme="light"] .markdown-body .chroma .kn,
+:root[data-theme="light"] .markdown-body .chroma .kp,
+:root[data-theme="light"] .markdown-body .chroma .kr,
+:root[data-theme="light"] .markdown-body .chroma .kt {
+  color: #cf222e;
 }
 
-.markdown-body .chroma .c,
-.markdown-body .chroma .ch,
-.markdown-body .chroma .cm,
-.markdown-body .chroma .c1,
-.markdown-body .chroma .cs,
-.markdown-body .chroma .cp,
-.markdown-body .chroma .cpf {
-  color: var(--color-prettylights-syntax-comment);
-  font-style: italic;
+:root[data-theme="light"] .markdown-body .chroma .na,
+:root[data-theme="light"] .markdown-body .chroma .nc,
+:root[data-theme="light"] .markdown-body .chroma .nx,
+:root[data-theme="light"] .markdown-body .chroma .p,
+:root[data-theme="light"] .markdown-body .chroma .go,
+:root[data-theme="light"] .markdown-body .chroma .ge {
+  color: #1f2328;
 }
 
-.markdown-body .chroma .k,
-.markdown-body .chroma .kc,
-.markdown-body .chroma .kd,
-.markdown-body .chroma .kn,
-.markdown-body .chroma .kp,
-.markdown-body .chroma .kr,
-.markdown-body .chroma .kt,
-.markdown-body .chroma .o,
-.markdown-body .chroma .ow,
-.markdown-body .chroma .nn {
-  color: var(--color-prettylights-syntax-keyword);
+:root[data-theme="light"] .markdown-body .chroma .no,
+:root[data-theme="light"] .markdown-body .chroma .nd,
+:root[data-theme="light"] .markdown-body .chroma .nt,
+:root[data-theme="light"] .markdown-body .chroma .m,
+:root[data-theme="light"] .markdown-body .chroma .mb,
+:root[data-theme="light"] .markdown-body .chroma .mf,
+:root[data-theme="light"] .markdown-body .chroma .mh,
+:root[data-theme="light"] .markdown-body .chroma .mi,
+:root[data-theme="light"] .markdown-body .chroma .il,
+:root[data-theme="light"] .markdown-body .chroma .mo,
+:root[data-theme="light"] .markdown-body .chroma .o,
+:root[data-theme="light"] .markdown-body .chroma .ow {
+  color: #0550ae;
 }
 
-.markdown-body .chroma .o,
-.markdown-body .chroma .ow,
-.markdown-body .chroma .nc,
-.markdown-body .chroma .ne,
-.markdown-body .chroma .nd,
-.markdown-body .chroma .nf,
-.markdown-body .chroma .fm,
-.markdown-body .chroma .no,
-.markdown-body .chroma .nl {
-  font-weight: 600;
+:root[data-theme="light"] .markdown-body .chroma .ni,
+:root[data-theme="light"] .markdown-body .chroma .nb,
+:root[data-theme="light"] .markdown-body .chroma .nf,
+:root[data-theme="light"] .markdown-body .chroma .fm {
+  color: #6639ba;
 }
 
-.markdown-body .chroma .na,
-.markdown-body .chroma .nx,
-.markdown-body .chroma .p,
-.markdown-body .chroma .go {
-  color: var(--fgColor-default);
+:root[data-theme="light"] .markdown-body .chroma .nl {
+  color: #900;
+  font-weight: bold;
 }
 
-.markdown-body .chroma .nb,
-.markdown-body .chroma .nc,
-.markdown-body .chroma .nd,
-.markdown-body .chroma .ne,
-.markdown-body .chroma .nf,
-.markdown-body .chroma .fm,
-.markdown-body .chroma .ni {
-  color: var(--color-prettylights-syntax-entity);
+:root[data-theme="light"] .markdown-body .chroma .nn {
+  color: #24292e;
 }
 
-.markdown-body .chroma .nt {
-  color: var(--color-prettylights-syntax-entity-tag);
+:root[data-theme="light"] .markdown-body .chroma .bp {
+  color: #6a737d;
 }
 
-.markdown-body .chroma .no,
-.markdown-body .chroma .m,
-.markdown-body .chroma .mb,
-.markdown-body .chroma .mf,
-.markdown-body .chroma .mh,
-.markdown-body .chroma .mi,
-.markdown-body .chroma .il,
-.markdown-body .chroma .mo,
-.markdown-body .chroma .l,
-.markdown-body .chroma .ld {
-  color: var(--color-prettylights-syntax-constant);
+:root[data-theme="light"] .markdown-body .chroma .nv,
+:root[data-theme="light"] .markdown-body .chroma .vc,
+:root[data-theme="light"] .markdown-body .chroma .vg,
+:root[data-theme="light"] .markdown-body .chroma .vi,
+:root[data-theme="light"] .markdown-body .chroma .vm {
+  color: #953800;
 }
 
-.markdown-body .chroma .nv,
-.markdown-body .chroma .vc,
-.markdown-body .chroma .vg,
-.markdown-body .chroma .vi,
-.markdown-body .chroma .vm,
-.markdown-body .chroma .py {
-  color: var(--color-prettylights-syntax-variable);
+:root[data-theme="light"] .markdown-body .chroma .s,
+:root[data-theme="light"] .markdown-body .chroma .sa,
+:root[data-theme="light"] .markdown-body .chroma .sb,
+:root[data-theme="light"] .markdown-body .chroma .sc,
+:root[data-theme="light"] .markdown-body .chroma .dl,
+:root[data-theme="light"] .markdown-body .chroma .sd,
+:root[data-theme="light"] .markdown-body .chroma .s2,
+:root[data-theme="light"] .markdown-body .chroma .se,
+:root[data-theme="light"] .markdown-body .chroma .sh,
+:root[data-theme="light"] .markdown-body .chroma .si,
+:root[data-theme="light"] .markdown-body .chroma .sx,
+:root[data-theme="light"] .markdown-body .chroma .sr,
+:root[data-theme="light"] .markdown-body .chroma .s1 {
+  color: #0a3069;
 }
 
-.markdown-body .chroma .s,
-.markdown-body .chroma .sa,
-.markdown-body .chroma .sb,
-.markdown-body .chroma .sc,
-.markdown-body .chroma .dl,
-.markdown-body .chroma .sd,
-.markdown-body .chroma .s2,
-.markdown-body .chroma .se,
-.markdown-body .chroma .sh,
-.markdown-body .chroma .si,
-.markdown-body .chroma .sx,
-.markdown-body .chroma .sr,
-.markdown-body .chroma .s1,
-.markdown-body .chroma .ss {
-  color: var(--color-prettylights-syntax-string);
+:root[data-theme="light"] .markdown-body .chroma .ss {
+  color: #032f62;
 }
 
-.markdown-body .chroma .gd {
-  color: var(--color-prettylights-syntax-markup-deleted-text);
-  background-color: var(--color-prettylights-syntax-markup-deleted-bg);
+:root[data-theme="light"] .markdown-body .chroma .c,
+:root[data-theme="light"] .markdown-body .chroma .ch,
+:root[data-theme="light"] .markdown-body .chroma .cm,
+:root[data-theme="light"] .markdown-body .chroma .c1,
+:root[data-theme="light"] .markdown-body .chroma .cs,
+:root[data-theme="light"] .markdown-body .chroma .cp,
+:root[data-theme="light"] .markdown-body .chroma .cpf {
+  color: #57606a;
 }
 
-.markdown-body .chroma .gi {
-  color: var(--color-prettylights-syntax-markup-inserted-text);
-  background-color: var(--color-prettylights-syntax-markup-inserted-bg);
+:root[data-theme="light"] .markdown-body .chroma .gd {
+  color: #82071e;
+  background-color: #ffebe9;
 }
 
-.markdown-body .chroma .gh,
-.markdown-body .chroma .gu {
-  color: var(--color-prettylights-syntax-markup-heading);
-  font-weight: 600;
+:root[data-theme="light"] .markdown-body .chroma .gi {
+  color: #116329;
+  background-color: #dafbe1;
 }
 
-.markdown-body .chroma .ge {
-  font-style: italic;
-}
-
-.markdown-body .chroma .gs {
-  font-weight: 600;
-}
-
-.markdown-body .chroma .gl {
+:root[data-theme="light"] .markdown-body .chroma .gl {
   text-decoration: underline;
 }
 
-.markdown-body .chroma .gr,
-.markdown-body .chroma .gt {
-  color: var(--fgColor-danger);
+:root[data-theme="light"] .markdown-body .chroma .w {
+  color: #fff;
 }
 
-.markdown-body .chroma .gp,
-.markdown-body .chroma .w {
-  color: var(--fgColor-muted);
+:root[data-theme="dark"] .markdown-body .chroma {
+  color: #e6edf3;
+  -webkit-text-size-adjust: none;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .err {
+  color: #f85149;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .lnlinks {
+  color: inherit;
+  outline: none;
+  text-decoration: none;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .lntd {
+  vertical-align: top;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .lntable {
+  border-spacing: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .hl {
+  background-color: #6e7681;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .lnt {
+  white-space: pre;
+  user-select: none;
+  margin-right: 0.4em;
+  padding: 0 0.4em 0 0.4em;
+  color: #737679;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .ln {
+  white-space: pre;
+  user-select: none;
+  margin-right: 0.4em;
+  padding: 0 0.4em 0 0.4em;
+  color: #6e7681;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .line {
+  display: flex;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .k,
+:root[data-theme="dark"] .markdown-body .chroma .kd,
+:root[data-theme="dark"] .markdown-body .chroma .kn,
+:root[data-theme="dark"] .markdown-body .chroma .kr,
+:root[data-theme="dark"] .markdown-body .chroma .nn,
+:root[data-theme="dark"] .markdown-body .chroma .o,
+:root[data-theme="dark"] .markdown-body .chroma .ow,
+:root[data-theme="dark"] .markdown-body .chroma .gt {
+  color: #ff7b72;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .kc,
+:root[data-theme="dark"] .markdown-body .chroma .kp,
+:root[data-theme="dark"] .markdown-body .chroma .no,
+:root[data-theme="dark"] .markdown-body .chroma .nl,
+:root[data-theme="dark"] .markdown-body .chroma .py,
+:root[data-theme="dark"] .markdown-body .chroma .nv,
+:root[data-theme="dark"] .markdown-body .chroma .vc,
+:root[data-theme="dark"] .markdown-body .chroma .vg,
+:root[data-theme="dark"] .markdown-body .chroma .vi,
+:root[data-theme="dark"] .markdown-body .chroma .vm,
+:root[data-theme="dark"] .markdown-body .chroma .ld {
+  color: #79c0ff;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .kt {
+  color: #ff7b72;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .nc,
+:root[data-theme="dark"] .markdown-body .chroma .ne {
+  color: #f0883e;
+  font-weight: bold;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .nd,
+:root[data-theme="dark"] .markdown-body .chroma .nf,
+:root[data-theme="dark"] .markdown-body .chroma .fm {
+  color: #d2a8ff;
+  font-weight: bold;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .ni {
+  color: #ffa657;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .nt {
+  color: #7ee787;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .l,
+:root[data-theme="dark"] .markdown-body .chroma .s,
+:root[data-theme="dark"] .markdown-body .chroma .sb,
+:root[data-theme="dark"] .markdown-body .chroma .sc,
+:root[data-theme="dark"] .markdown-body .chroma .sd,
+:root[data-theme="dark"] .markdown-body .chroma .s2,
+:root[data-theme="dark"] .markdown-body .chroma .si,
+:root[data-theme="dark"] .markdown-body .chroma .sx,
+:root[data-theme="dark"] .markdown-body .chroma .s1,
+:root[data-theme="dark"] .markdown-body .chroma .ss,
+:root[data-theme="dark"] .markdown-body .chroma .m,
+:root[data-theme="dark"] .markdown-body .chroma .mb,
+:root[data-theme="dark"] .markdown-body .chroma .mf,
+:root[data-theme="dark"] .markdown-body .chroma .mh,
+:root[data-theme="dark"] .markdown-body .chroma .mi,
+:root[data-theme="dark"] .markdown-body .chroma .il,
+:root[data-theme="dark"] .markdown-body .chroma .mo {
+  color: #a5d6ff;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .sa,
+:root[data-theme="dark"] .markdown-body .chroma .dl,
+:root[data-theme="dark"] .markdown-body .chroma .se,
+:root[data-theme="dark"] .markdown-body .chroma .sh,
+:root[data-theme="dark"] .markdown-body .chroma .sr {
+  color: #79c0ff;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .c,
+:root[data-theme="dark"] .markdown-body .chroma .ch,
+:root[data-theme="dark"] .markdown-body .chroma .cm,
+:root[data-theme="dark"] .markdown-body .chroma .c1 {
+  color: #8b949e;
+  font-style: italic;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .cs,
+:root[data-theme="dark"] .markdown-body .chroma .cp,
+:root[data-theme="dark"] .markdown-body .chroma .cpf {
+  color: #8b949e;
+  font-weight: bold;
+  font-style: italic;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .gd {
+  color: #ffa198;
+  background-color: #490202;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .ge {
+  font-style: italic;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .gh {
+  color: #79c0ff;
+  font-weight: bold;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .gi {
+  color: #56d364;
+  background-color: #0f5323;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .go,
+:root[data-theme="dark"] .markdown-body .chroma .gp {
+  color: #8b949e;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .gs {
+  font-weight: bold;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .gu {
+  color: #79c0ff;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .gl {
+  text-decoration: underline;
+}
+
+:root[data-theme="dark"] .markdown-body .chroma .w {
+  color: #6e7681;
 }

@@ -81,3 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--refresh", action="store_true")
     args = parser.parse_args(argv)
     return AssetSync(refresh=args.refresh).run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
