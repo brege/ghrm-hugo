@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import html
 import shutil
 from dataclasses import dataclass
 from html.parser import HTMLParser
@@ -261,6 +262,7 @@ class StageBuilder:
             out.append(replacements[idx])
             cursor = tag.end
         out.append(text[cursor:])
+        body = self.neutralize_invalid_shortcodes("".join(out))
 
         staged: list[str] = []
         if source_dir is not None:
@@ -273,7 +275,7 @@ class StageBuilder:
                 ]
             )
         staged.append(PREFIX)
-        staged.append("".join(out))
+        staged.append(body)
         return "".join(staged), names
 
     def find_tags(self, text: str) -> list[Tag]:
@@ -318,6 +320,40 @@ class StageBuilder:
         body = stripped[: -len(close)].rstrip()
         suffix = raw[len(stripped):]
         return f"{body} /{close}{suffix}"
+
+    def neutralize_invalid_shortcodes(self, text: str) -> str:
+        out: list[str] = []
+        cursor = 0
+        while True:
+            starts = [pos for pos in (text.find("{{<", cursor), text.find("{{%", cursor)) if pos != -1]
+            if not starts:
+                out.append(text[cursor:])
+                return "".join(out)
+            start = min(starts)
+            out.append(text[cursor:start])
+
+            end = self.shortcode_end(text, start)
+            if end is None:
+                out.append(text[start:])
+                return "".join(out)
+            raw = text[start:end]
+            tag = self.parse_tag(text, start)
+            if tag is not None or (start > 0 and text[start - 1] == "\\"):
+                out.append(raw)
+            else:
+                out.append(self.escape_shortcode(raw))
+            cursor = end
+
+    def shortcode_end(self, text: str, start: int) -> int | None:
+        close = ">}}" if text[start + 2] == "<" else "%}}"
+        end = text.find(close, start + 3)
+        if end == -1:
+            return None
+        return end + len(close)
+
+    def escape_shortcode(self, raw: str) -> str:
+        escaped = html.escape(raw, quote=False)
+        return escaped.replace("{", "&#123;").replace("}", "&#125;")
 
     def token_attr(self, token, name: str) -> str | None:
         if hasattr(token, "attrGet"):
