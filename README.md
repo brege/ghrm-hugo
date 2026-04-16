@@ -10,7 +10,7 @@ The point of this tool is **offline preview**. Install once, then keep working w
 
 ## Requirements
 
-- [Hugo](https://gohugo.io/) (>= 0.132)
+- [Hugo](https://gohugo.io/) >= 0.132
 - [uv](https://docs.astral.sh/uv/)
 
 ## Install

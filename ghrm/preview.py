@@ -149,6 +149,7 @@ class PreviewApp:
             f'baseURL = "http://{self.browser_host()}:{self.config.port}/"\n'
             f'title = "{title}"\n'
             'theme = "gh-readme"\n'
+            'disablePathToLower = true\n'
             f"{disable_kinds}"
             'enableEmoji = true\n'
             f"{params}"
