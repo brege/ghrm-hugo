@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import filecmp
+import hashlib
 import html
 import json
 import shutil
-import tempfile
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
@@ -20,6 +19,22 @@ PREFIX = "<!-- ghrm -->\n"
 MD = MarkdownIt()
 
 
+def _package_fingerprint() -> str:
+    root = Path(__file__).parent
+    digest = hashlib.sha256()
+    for path in sorted(root.rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        digest.update(str(path.relative_to(root)).encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+FINGERPRINT = _package_fingerprint()
+
+
 @dataclass(frozen=True)
 class Tag:
     start: int
@@ -29,21 +44,7 @@ class Tag:
     closing: bool
 
 
-class HtmlRefs(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__()
-        self.refs: set[str] = set()
-
-    def handle_starttag(self, _tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        self._collect(attrs)
-
-    def handle_startendtag(self, _tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        self._collect(attrs)
-
-    def _collect(self, attrs: list[tuple[str, str | None]]) -> None:
-        for name, value in attrs:
-            if name in {"href", "src"} and value:
-                self.refs.add(value)
+PageState = dict[str, int | list[str]]
 
 
 class HtmlRewrite(HTMLParser):
@@ -52,6 +53,7 @@ class HtmlRewrite(HTMLParser):
         self.builder = builder
         self.src = src
         self.out: list[str] = []
+        self.refs: set[str] = set()
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.out.append(self._tag(tag, attrs, False))
@@ -98,6 +100,7 @@ class HtmlRewrite(HTMLParser):
                 parts.append(f" {name}")
                 continue
             if name in {"href", "src"}:
+                self.refs.add(value)
                 value = self.builder.local_url(self.src, value)
             escaped = value.replace("&", "&amp;").replace('"', "&quot;")
             parts.append(f' {name}="{escaped}"')
@@ -105,9 +108,16 @@ class HtmlRewrite(HTMLParser):
         return "".join(parts)
 
 
-@dataclass(frozen=True)
-class SitePaths:
-    site_dir: Path
+class StageBuilder:
+    def __init__(
+        self,
+        mode: str,
+        target: Path,
+        site_dir: Path,
+    ) -> None:
+        self.mode = mode
+        self.target = target
+        self.site_dir = site_dir
 
     @property
     def content_dir(self) -> Path:
@@ -125,110 +135,156 @@ class SitePaths:
     def data_dir(self) -> Path:
         return self.site_dir / "data"
 
-
-class StageBuilder:
-    def __init__(
-        self,
-        mode: str,
-        target: Path,
-        site_dir: Path,
-    ) -> None:
-        self.mode = mode
-        self.target = target
-        self.paths = SitePaths(site_dir)
-
     @property
-    def content_dir(self) -> Path:
-        return self.paths.content_dir
-
-    @property
-    def shortcodes_dir(self) -> Path:
-        return self.paths.shortcodes_dir
-
-    @property
-    def static_dir(self) -> Path:
-        return self.paths.static_dir
-
-    @property
-    def data_dir(self) -> Path:
-        return self.paths.data_dir
+    def state_path(self) -> Path:
+        return self.site_dir / "_ghrm" / "state.json"
 
     def run(self) -> int:
-        with tempfile.TemporaryDirectory() as tmp:
-            staged = StageBuilder(mode=self.mode, target=self.target, site_dir=Path(tmp))
-            staged.build()
-            for src, dst in self.sync_order(staged):
-                self.copy_tree(src, dst)
-            for src, dst in self.sync_order(staged):
-                self.prune_tree(src, dst)
-        return 0
+        state = self.load_state()
+        if state is None and self.state_path.exists():
+            self.clear_cache()
+        if state is not None and state["fingerprint"] != FINGERPRINT:
+            self.clear_cache()
+            state = None
 
-    def build(self) -> None:
-        self.reset_dir(self.content_dir)
-        self.reset_dir(self.shortcodes_dir)
-        if self.mode == "dir":
-            self.reset_dir(self.static_dir)
-            self.reset_dir(self.data_dir)
-
-        names: set[str] = set()
         if self.mode == "file":
+            names: set[str] = set()
+            self.reset_dir(self.content_dir)
+            self.reset_dir(self.shortcodes_dir)
             names.update(self.stage_file_mode())
         else:
-            names.update(self.stage_dir_mode())
-            self.write_nav()
+            files = [path.relative_to(self.target) for path in markdown_files(self.target)]
+            current = self.markdown_mtimes(files)
+            if state is not None and self.cached_ready(state, current):
+                return 0
+            for path in (
+                self.content_dir,
+                self.shortcodes_dir,
+                self.static_dir,
+                self.data_dir,
+            ):
+                path.mkdir(parents=True, exist_ok=True)
+            prev_pages = state["pages"] if state is not None else {}
+            names, pages = self.stage_dir_mode(files, current, prev_pages)
+            if prev_pages.keys() != current.keys() or not (self.data_dir / "nav.json").is_file():
+                self.write_nav(files)
+            self.prune_shortcodes(self.page_names(prev_pages), names)
+            self.write_state(pages)
 
         for name in sorted(names):
             path = self.shortcodes_dir / f"{name}.html"
+            if path.is_file():
+                continue
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("{{ .Inner }}\n", encoding="utf-8")
+        return 0
 
-    def sync_order(self, staged: "StageBuilder") -> list[tuple[Path, Path]]:
-        order = [(staged.shortcodes_dir, self.shortcodes_dir)]
-        if self.mode == "dir":
-            order.extend(
-                [
-                    (staged.data_dir, self.data_dir),
-                    (staged.static_dir, self.static_dir),
-                ]
-            )
-        order.append((staged.content_dir, self.content_dir))
-        return order
+    def cached_ready(self, state: dict, current: dict[str, int]) -> bool:
+        if not self.content_dir.is_dir() or not self.shortcodes_dir.is_dir():
+            return False
+        if not self.static_dir.is_dir() or not self.data_dir.is_dir():
+            return False
+        if not (self.data_dir / "nav.json").is_file():
+            return False
+        if state["pages"].keys() != current.keys():
+            return False
+        for key, page in state["pages"].items():
+            if page["mtime"] != current[key]:
+                return False
+            if not self.page_dst(Path(key)).is_file():
+                return False
+        for name in self.page_names(state["pages"]):
+            if not (self.shortcodes_dir / f"{name}.html").is_file():
+                return False
+        for rel in self.page_assets(state["pages"]):
+            if not (self.static_dir / rel).is_file():
+                return False
+        return True
 
-    def copy_tree(self, src: Path, dst: Path) -> None:
-        dst.mkdir(parents=True, exist_ok=True)
+    def clear_cache(self) -> None:
+        for path in (
+            self.content_dir,
+            self.static_dir,
+            self.data_dir,
+            self.shortcodes_dir,
+            self.state_path.parent,
+        ):
+            if path.exists():
+                shutil.rmtree(path)
 
-        for src_path in sorted(src.iterdir()):
-            dst_path = dst / src_path.name
-            if src_path.is_dir():
-                if dst_path.exists() and not dst_path.is_dir():
-                    self.remove_path(dst_path)
-                self.copy_tree(src_path, dst_path)
-                continue
-            if dst_path.exists() and dst_path.is_dir():
-                self.remove_path(dst_path)
-            if dst_path.exists() and filecmp.cmp(src_path, dst_path, shallow=False):
-                continue
-            dst_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src_path, dst_path)
+    def load_state(self) -> dict | None:
+        try:
+            raw = self.state_path.read_text(encoding="utf-8")
+        except OSError:
+            return None
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(data, dict):
+            return None
+        fingerprint = data.get("fingerprint")
+        pages = data.get("pages")
+        if not isinstance(fingerprint, str):
+            return None
+        if not isinstance(pages, dict):
+            return None
+        cleaned_pages: dict[str, PageState] = {}
+        for key, value in pages.items():
+            if not isinstance(key, str) or not isinstance(value, dict):
+                return None
+            mtime = value.get("mtime")
+            page_names = value.get("names")
+            assets = value.get("assets")
+            if not isinstance(mtime, int):
+                return None
+            if not isinstance(page_names, list) or not all(isinstance(item, str) for item in page_names):
+                return None
+            if not isinstance(assets, list) or not all(isinstance(item, str) for item in assets):
+                return None
+            cleaned_pages[key] = {"mtime": mtime, "names": page_names, "assets": assets}
+        return {
+            "fingerprint": fingerprint,
+            "pages": cleaned_pages,
+        }
 
-    def prune_tree(self, src: Path, dst: Path) -> None:
-        if not dst.exists():
-            return
-        names = {path.name for path in src.iterdir()}
+    def write_state(self, pages: dict[str, PageState]) -> None:
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "fingerprint": FINGERPRINT,
+            "pages": pages,
+        }
+        self.state_path.write_text(
+            json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
 
-        for dst_path in sorted(dst.iterdir()):
-            if dst_path.name in names:
-                src_path = src / dst_path.name
-                if src_path.is_dir() and dst_path.is_dir():
-                    self.prune_tree(src_path, dst_path)
-                continue
-            self.remove_path(dst_path)
+    def markdown_mtimes(self, files: list[Path]) -> dict[str, int]:
+        items: dict[str, int] = {}
+        for rel in files:
+            items[rel.as_posix()] = int((self.target / rel).stat().st_mtime_ns)
+        return items
 
-    def remove_path(self, path: Path) -> None:
-        if path.is_dir():
-            shutil.rmtree(path)
-            return
-        path.unlink()
+    def page_assets(self, pages: dict[str, PageState]) -> list[str]:
+        assets = {
+            path
+            for page in pages.values()
+            for path in page["assets"]
+        }
+        return sorted(assets)
+
+    def page_names(self, pages: dict[str, PageState]) -> set[str]:
+        return {
+            name
+            for page in pages.values()
+            for name in page["names"]
+        }
+
+    def fresh(self, src: Path, dst: Path) -> bool:
+        try:
+            return dst.stat().st_mtime_ns >= src.stat().st_mtime_ns
+        except OSError:
+            return False
 
     def stage_file_mode(self) -> set[str]:
         root = self.target.parent
@@ -244,38 +300,118 @@ class StageBuilder:
             src = root / rel
             source_dir = "" if rel.parent == Path(".") else rel.parent.as_posix()
             dst = self.content_dir / ("_index.md" if rel == root_rel else rel)
-            text, file_names = self.stage_markdown(root, src, dst, source_dir, rel.as_posix())
+            file_names, tokens, _ = self.stage_markdown(root, src, dst, source_dir, rel.as_posix())
             names.update(file_names)
             staged.add(rel)
-            for ref in sorted(self.markdown_refs(root, src, text), reverse=True):
+            for ref in sorted(self.markdown_refs(root, src, tokens), reverse=True):
                 if ref not in staged:
                     pending.append(ref)
         return names
 
-    def stage_dir_mode(self) -> set[str]:
+    def stage_dir_mode(
+        self,
+        files: list[Path],
+        current: dict[str, int],
+        prev_pages: dict[str, PageState],
+    ) -> tuple[set[str], dict[str, PageState]]:
         names: set[str] = set()
         assets: set[Path] = set()
         sections: set[Path] = set()
-        for src in markdown_files(self.target):
-            rel = src.relative_to(self.target)
+        expected_pages: set[Path] = set()
+        pages: dict[str, PageState] = {}
+        for rel in files:
+            src = self.target / rel
             sections.update(self.parent_dirs(rel))
+            dst = self.page_dst(rel)
+            expected_pages.add(dst)
+            key = rel.as_posix()
+            cached = prev_pages.get(key)
+            if cached is not None and cached["mtime"] == current[key] and dst.is_file():
+                page_names = set(cached["names"])
+                page_assets = {
+                    Path(path)
+                    for path in cached["assets"]
+                    if (self.target / path).is_file()
+                }
+                names.update(page_names)
+                assets.update(page_assets)
+                pages[key] = {
+                    "mtime": current[key],
+                    "names": sorted(page_names),
+                    "assets": sorted(path.as_posix() for path in page_assets),
+                }
+                continue
             source_dir = "" if rel.parent == Path(".") else rel.parent.as_posix()
-            text, file_names = self.stage_markdown(
+            page_names, tokens, html_refs = self.stage_markdown(
                 self.target,
                 src,
-                self.page_dst(rel),
+                dst,
                 source_dir,
-                rel.as_posix(),
+                key,
             )
-            names.update(file_names)
-            assets.update(self.asset_refs(self.target, src, text))
+            page_assets = self.asset_refs(self.target, src, tokens, html_refs)
+            names.update(page_names)
+            assets.update(page_assets)
+            pages[key] = {
+                "mtime": current[key],
+                "names": sorted(page_names),
+                "assets": sorted(path.as_posix() for path in page_assets),
+            }
 
         for rel in sorted(sections):
             self.stage_section(rel)
 
         for rel in sorted(assets):
             self.copy_asset(self.target, rel)
-        return names
+
+        self.prune_content(expected_pages, sections, prev_pages)
+        self.prune_assets(prev_pages, pages)
+        return names, pages
+
+    def prune_content(
+        self,
+        expected_pages: set[Path],
+        sections: set[Path],
+        prev_pages: dict[str, PageState],
+    ) -> None:
+        for key in prev_pages:
+            page = self.page_dst(Path(key))
+            if page in expected_pages:
+                continue
+            shutil.rmtree(page.parent, ignore_errors=True)
+
+        prev_sections: set[Path] = set()
+        for key in prev_pages:
+            prev_sections.update(self.parent_dirs(Path(key)))
+        for rel in prev_sections - sections:
+            idx = self.content_dir / rel / "_index.md"
+            idx.unlink(missing_ok=True)
+
+    def prune_assets(
+        self,
+        prev_pages: dict[str, PageState],
+        pages: dict[str, PageState],
+    ) -> None:
+        previous = {
+            Path(path)
+            for page in prev_pages.values()
+            for path in page["assets"]
+        }
+        current = {
+            Path(path)
+            for page in pages.values()
+            for path in page["assets"]
+        }
+        for rel in previous - current:
+            path = self.static_dir / rel
+            if path.is_dir():
+                shutil.rmtree(path, ignore_errors=True)
+                continue
+            path.unlink(missing_ok=True)
+
+    def prune_shortcodes(self, previous: set[str], current: set[str]) -> None:
+        for name in previous - current:
+            (self.shortcodes_dir / f"{name}.html").unlink(missing_ok=True)
 
     def page_dst(self, rel: Path) -> Path:
         stem = rel.with_suffix("")
@@ -290,9 +426,11 @@ class StageBuilder:
         return dirs
 
     def stage_section(self, rel: Path) -> None:
+        dst = self.content_dir / rel / "_index.md"
+        if dst.is_file():
+            return
         title = self.escape_yaml(rel.name)
         source_dir = self.escape_yaml(rel.as_posix())
-        dst = self.content_dir / rel / "_index.md"
         dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_text(
             (
@@ -317,16 +455,17 @@ class StageBuilder:
         dst: Path,
         source_dir: str | None,
         source_path: str | None,
-    ) -> tuple[str, set[str]]:
+    ) -> tuple[set[str], list, set[str]]:
         raw = src.read_text(encoding="utf-8")
-        text = self.rewrite_html(root, src, raw)
+        tokens = MD.parse(raw)
+        text, html_refs = self.rewrite_html(root, src, raw, tokens)
         page_url = None
         if self.mode == "dir" and source_path is not None:
             page_url = self.page_url(root, Path(source_path))
         staged, names = self.stage_text(text, source_dir, source_path, page_url)
         dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_text(staged, encoding="utf-8")
-        return raw, names
+        return names, tokens, html_refs
 
     def stage_text(
         self,
@@ -373,18 +512,14 @@ class StageBuilder:
         body = self.neutralize_invalid_shortcodes("".join(out))
 
         staged: list[str] = []
-        if source_dir is not None or source_path is not None:
-            staged.extend(
-                [
-                    "---\n",
-                ]
-            )
+        if source_dir is not None or source_path is not None or page_url is not None:
+            staged.append("---\n")
             if source_dir is not None or source_path is not None:
                 staged.append("params:\n")
-            if source_dir is not None:
-                staged.append(f'  sourceDir: "{self.escape_yaml(source_dir)}"\n')
-            if source_path is not None:
-                staged.append(f'  sourcePath: "{self.escape_yaml(source_path)}"\n')
+                if source_dir is not None:
+                    staged.append(f'  sourceDir: "{self.escape_yaml(source_dir)}"\n')
+                if source_path is not None:
+                    staged.append(f'  sourcePath: "{self.escape_yaml(source_path)}"\n')
             if page_url is not None:
                 staged.append(f'url: "{self.escape_yaml(page_url)}"\n')
             staged.append("---\n")
@@ -392,17 +527,16 @@ class StageBuilder:
         staged.append(body)
         return "".join(staged), names
 
-    def write_nav(self) -> None:
+    def write_nav(self, files: list[Path]) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         path = self.data_dir / "nav.json"
-        payload = {"dirs": self.nav_dirs()}
+        payload = {"dirs": self.nav_dirs(files)}
         path.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
 
-    def nav_dirs(self) -> dict[str, dict[str, object]]:
-        files = [path.relative_to(self.target) for path in markdown_files(self.target)]
+    def nav_dirs(self, files: list[Path]) -> dict[str, dict[str, object]]:
         direct_files: dict[Path, list[Path]] = {}
         dirs = {Path(".")}
 
@@ -569,7 +703,7 @@ class StageBuilder:
             return None
         resolved = (src.parent / parts.path).resolve(strict=False)
         try:
-            return resolved.relative_to(root.resolve())
+            return resolved.relative_to(root)
         except ValueError:
             return None
 
@@ -602,8 +736,7 @@ class StageBuilder:
             return f"{page}{suffix}"
         return f"/{rel.as_posix()}{suffix}"
 
-    def rewrite_html(self, root: Path, src: Path, text: str) -> str:
-        tokens = MD.parse(text)
+    def rewrite_html(self, root: Path, src: Path, text: str, tokens: list) -> tuple[str, set[str]]:
         fragments: list[str] = []
         for token in tokens:
             if token.type == "html_block":
@@ -616,6 +749,7 @@ class StageBuilder:
                     fragments.append(child.content)
 
         out: list[str] = []
+        html_refs: set[str] = set()
         cursor = 0
         for fragment in fragments:
             start = text.find(fragment, cursor)
@@ -624,15 +758,21 @@ class StageBuilder:
             parser = HtmlRewrite(self, src)
             parser.feed(fragment)
             parser.close()
+            html_refs.update(parser.refs)
             out.append(text[cursor:start])
             out.append(parser.rendered())
             cursor = start + len(fragment)
         out.append(text[cursor:])
-        return "".join(out)
+        return "".join(out), html_refs
 
-    def asset_refs(self, root: Path, src: Path, text: str) -> set[Path]:
+    def asset_refs(
+        self,
+        root: Path,
+        src: Path,
+        tokens: list,
+        html_refs: set[str],
+    ) -> set[Path]:
         refs: set[Path] = set()
-        tokens = MD.parse(text)
         for token in self.inline_tokens(tokens):
             if token.type == "image":
                 dest = self.token_attr(token, "src")
@@ -645,28 +785,22 @@ class StageBuilder:
             rel = self.relative_target(root, src, dest)
             if rel is None or rel.suffix.lower() == ".md":
                 continue
+            if not (root / rel).is_file():
+                continue
             refs.add(rel)
 
-        for token in tokens:
-            if token.type not in {"html_block", "inline"}:
+        for dest in html_refs:
+            rel = self.relative_target(root, src, dest)
+            if rel is None or rel.suffix.lower() == ".md":
                 continue
-            html_tokens = [token] if token.type == "html_block" else [
-                child for child in token.children or [] if child.type == "html_inline"
-            ]
-            for html_token in html_tokens:
-                parser = HtmlRefs()
-                parser.feed(html_token.content)
-                parser.close()
-                for dest in parser.refs:
-                    rel = self.relative_target(root, src, dest)
-                    if rel is None or rel.suffix.lower() == ".md":
-                        continue
-                    refs.add(rel)
+            if not (root / rel).is_file():
+                continue
+            refs.add(rel)
         return refs
 
-    def markdown_refs(self, root: Path, src: Path, text: str) -> set[Path]:
+    def markdown_refs(self, root: Path, src: Path, tokens: list) -> set[Path]:
         refs: set[Path] = set()
-        for token in self.inline_tokens(MD.parse(text)):
+        for token in self.inline_tokens(tokens):
             if token.type != "link_open":
                 continue
             dest = self.token_attr(token, "href")
@@ -682,5 +816,7 @@ class StageBuilder:
         if not src.is_file():
             return
         dst = self.static_dir / rel
+        if self.fresh(src, dst):
+            return
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)

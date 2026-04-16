@@ -10,7 +10,7 @@ from pathlib import Path
 import subprocess
 
 
-EXCLUDED_DIRS = {".git", ".claude", ".venv", "node_modules"}
+EXCLUDED_DIRS = {".git", ".venv", "node_modules", "__pycache__"}
 
 
 def real_target(target: str) -> Path:
