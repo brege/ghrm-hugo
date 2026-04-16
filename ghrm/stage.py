@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import html
 import json
 import shutil
@@ -12,27 +11,12 @@ from urllib.parse import urlsplit
 from markdown_it import MarkdownIt
 from mdit_py_hugo._shortcode_parsing import ParseError, parse as parse_shortcode
 
+from . import __version__
 from .common import markdown_files
 
 
 PREFIX = "<!-- ghrm -->\n"
 MD = MarkdownIt()
-
-
-def _package_fingerprint() -> str:
-    root = Path(__file__).parent
-    digest = hashlib.sha256()
-    for path in sorted(root.rglob("*.py")):
-        if "__pycache__" in path.parts:
-            continue
-        digest.update(str(path.relative_to(root)).encode("utf-8"))
-        digest.update(b"\0")
-        digest.update(path.read_bytes())
-        digest.update(b"\0")
-    return digest.hexdigest()
-
-
-FINGERPRINT = _package_fingerprint()
 
 
 @dataclass(frozen=True)
@@ -143,7 +127,7 @@ class StageBuilder:
         state = self.load_state()
         if state is None and self.state_path.exists():
             self.clear_cache()
-        if state is not None and state["fingerprint"] != FINGERPRINT:
+        if state is not None and state["version"] != __version__:
             self.clear_cache()
             state = None
 
@@ -223,9 +207,9 @@ class StageBuilder:
             return None
         if not isinstance(data, dict):
             return None
-        fingerprint = data.get("fingerprint")
+        version = data.get("version")
         pages = data.get("pages")
-        if not isinstance(fingerprint, str):
+        if not isinstance(version, str):
             return None
         if not isinstance(pages, dict):
             return None
@@ -244,14 +228,14 @@ class StageBuilder:
                 return None
             cleaned_pages[key] = {"mtime": mtime, "names": page_names, "assets": assets}
         return {
-            "fingerprint": fingerprint,
+            "version": version,
             "pages": cleaned_pages,
         }
 
     def write_state(self, pages: dict[str, PageState]) -> None:
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
-            "fingerprint": FINGERPRINT,
+            "version": __version__,
             "pages": pages,
         }
         self.state_path.write_text(
