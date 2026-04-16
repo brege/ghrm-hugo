@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
+import filecmp
 import html
+import json
 import shutil
+import tempfile
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
@@ -104,38 +105,130 @@ class HtmlRewrite(HTMLParser):
         return "".join(parts)
 
 
+@dataclass(frozen=True)
+class SitePaths:
+    site_dir: Path
+
+    @property
+    def content_dir(self) -> Path:
+        return self.site_dir / "content"
+
+    @property
+    def shortcodes_dir(self) -> Path:
+        return self.site_dir / "layouts" / "shortcodes"
+
+    @property
+    def static_dir(self) -> Path:
+        return self.site_dir / "static"
+
+    @property
+    def data_dir(self) -> Path:
+        return self.site_dir / "data"
+
+
 class StageBuilder:
     def __init__(
         self,
         mode: str,
         target: Path,
-        content_dir: Path,
-        shortcodes_dir: Path,
-        static_dir: Path,
+        site_dir: Path,
     ) -> None:
         self.mode = mode
         self.target = target
-        self.content_dir = content_dir
-        self.shortcodes_dir = shortcodes_dir
-        self.static_dir = static_dir
+        self.paths = SitePaths(site_dir)
+
+    @property
+    def content_dir(self) -> Path:
+        return self.paths.content_dir
+
+    @property
+    def shortcodes_dir(self) -> Path:
+        return self.paths.shortcodes_dir
+
+    @property
+    def static_dir(self) -> Path:
+        return self.paths.static_dir
+
+    @property
+    def data_dir(self) -> Path:
+        return self.paths.data_dir
 
     def run(self) -> int:
+        with tempfile.TemporaryDirectory() as tmp:
+            staged = StageBuilder(mode=self.mode, target=self.target, site_dir=Path(tmp))
+            staged.build()
+            for src, dst in self.sync_order(staged):
+                self.copy_tree(src, dst)
+            for src, dst in self.sync_order(staged):
+                self.prune_tree(src, dst)
+        return 0
+
+    def build(self) -> None:
         self.reset_dir(self.content_dir)
         self.reset_dir(self.shortcodes_dir)
         if self.mode == "dir":
             self.reset_dir(self.static_dir)
+            self.reset_dir(self.data_dir)
 
         names: set[str] = set()
         if self.mode == "file":
             names.update(self.stage_file_mode())
         else:
             names.update(self.stage_dir_mode())
+            self.write_nav()
 
         for name in sorted(names):
             path = self.shortcodes_dir / f"{name}.html"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("{{ .Inner }}\n", encoding="utf-8")
-        return 0
+
+    def sync_order(self, staged: "StageBuilder") -> list[tuple[Path, Path]]:
+        order = [(staged.shortcodes_dir, self.shortcodes_dir)]
+        if self.mode == "dir":
+            order.extend(
+                [
+                    (staged.data_dir, self.data_dir),
+                    (staged.static_dir, self.static_dir),
+                ]
+            )
+        order.append((staged.content_dir, self.content_dir))
+        return order
+
+    def copy_tree(self, src: Path, dst: Path) -> None:
+        dst.mkdir(parents=True, exist_ok=True)
+
+        for src_path in sorted(src.iterdir()):
+            dst_path = dst / src_path.name
+            if src_path.is_dir():
+                if dst_path.exists() and not dst_path.is_dir():
+                    self.remove_path(dst_path)
+                self.copy_tree(src_path, dst_path)
+                continue
+            if dst_path.exists() and dst_path.is_dir():
+                self.remove_path(dst_path)
+            if dst_path.exists() and filecmp.cmp(src_path, dst_path, shallow=False):
+                continue
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src_path, dst_path)
+
+    def prune_tree(self, src: Path, dst: Path) -> None:
+        if not dst.exists():
+            return
+        names = {path.name for path in src.iterdir()}
+
+        for dst_path in sorted(dst.iterdir()):
+            if dst_path.name in names:
+                src_path = src / dst_path.name
+                if src_path.is_dir() and dst_path.is_dir():
+                    self.prune_tree(src_path, dst_path)
+                continue
+            self.remove_path(dst_path)
+
+    def remove_path(self, path: Path) -> None:
+        if path.is_dir():
+            shutil.rmtree(path)
+            return
+        path.unlink()
 
     def stage_file_mode(self) -> set[str]:
         root = self.target.parent
@@ -151,7 +244,7 @@ class StageBuilder:
             src = root / rel
             source_dir = "" if rel.parent == Path(".") else rel.parent.as_posix()
             dst = self.content_dir / ("_index.md" if rel == root_rel else rel)
-            text, file_names = self.stage_markdown(root, src, dst, source_dir)
+            text, file_names = self.stage_markdown(root, src, dst, source_dir, rel.as_posix())
             names.update(file_names)
             staged.add(rel)
             for ref in sorted(self.markdown_refs(root, src, text), reverse=True):
@@ -170,8 +263,9 @@ class StageBuilder:
             text, file_names = self.stage_markdown(
                 self.target,
                 src,
-                self.content_dir / rel,
+                self.page_dst(rel),
                 source_dir,
+                rel.as_posix(),
             )
             names.update(file_names)
             assets.update(self.asset_refs(self.target, src, text))
@@ -183,6 +277,10 @@ class StageBuilder:
             self.copy_asset(self.target, rel)
         return names
 
+    def page_dst(self, rel: Path) -> Path:
+        stem = rel.with_suffix("")
+        return self.content_dir / "__ghrm" / stem / "page.md"
+
     def parent_dirs(self, rel: Path) -> set[Path]:
         dirs: set[Path] = set()
         parent = rel.parent
@@ -192,8 +290,8 @@ class StageBuilder:
         return dirs
 
     def stage_section(self, rel: Path) -> None:
-        title = rel.name.replace("\\", "\\\\").replace('"', '\\"')
-        source_dir = rel.as_posix().replace("\\", "\\\\").replace('"', '\\"')
+        title = self.escape_yaml(rel.name)
+        source_dir = self.escape_yaml(rel.as_posix())
         dst = self.content_dir / rel / "_index.md"
         dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_text(
@@ -218,15 +316,25 @@ class StageBuilder:
         src: Path,
         dst: Path,
         source_dir: str | None,
+        source_path: str | None,
     ) -> tuple[str, set[str]]:
         raw = src.read_text(encoding="utf-8")
         text = self.rewrite_html(root, src, raw)
-        staged, names = self.stage_text(text, source_dir)
+        page_url = None
+        if self.mode == "dir" and source_path is not None:
+            page_url = self.page_url(root, Path(source_path))
+        staged, names = self.stage_text(text, source_dir, source_path, page_url)
         dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_text(staged, encoding="utf-8")
         return raw, names
 
-    def stage_text(self, text: str, source_dir: str | None) -> tuple[str, set[str]]:
+    def stage_text(
+        self,
+        text: str,
+        source_dir: str | None,
+        source_path: str | None,
+        page_url: str | None,
+    ) -> tuple[str, set[str]]:
         tags = self.find_tags(text)
         names = {tag.name for tag in tags}
         replacements: dict[int, str] = {}
@@ -265,18 +373,102 @@ class StageBuilder:
         body = self.neutralize_invalid_shortcodes("".join(out))
 
         staged: list[str] = []
-        if source_dir is not None:
+        if source_dir is not None or source_path is not None:
             staged.extend(
                 [
                     "---\n",
-                    "params:\n",
-                    f'  sourceDir: "{source_dir}"\n',
-                    "---\n",
                 ]
             )
+            if source_dir is not None or source_path is not None:
+                staged.append("params:\n")
+            if source_dir is not None:
+                staged.append(f'  sourceDir: "{self.escape_yaml(source_dir)}"\n')
+            if source_path is not None:
+                staged.append(f'  sourcePath: "{self.escape_yaml(source_path)}"\n')
+            if page_url is not None:
+                staged.append(f'url: "{self.escape_yaml(page_url)}"\n')
+            staged.append("---\n")
         staged.append(PREFIX)
         staged.append(body)
         return "".join(staged), names
+
+    def write_nav(self) -> None:
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        path = self.data_dir / "nav.json"
+        payload = {"dirs": self.nav_dirs()}
+        path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    def nav_dirs(self) -> dict[str, dict[str, object]]:
+        files = [path.relative_to(self.target) for path in markdown_files(self.target)]
+        direct_files: dict[Path, list[Path]] = {}
+        dirs = {Path(".")}
+
+        for rel in files:
+            direct_files.setdefault(rel.parent, []).append(rel)
+            parent = rel.parent
+            while True:
+                dirs.add(parent)
+                if parent == Path("."):
+                    break
+                parent = parent.parent
+
+        child_dirs: dict[Path, list[Path]] = {}
+        for dir_rel in dirs:
+            if dir_rel == Path("."):
+                continue
+            child_dirs.setdefault(dir_rel.parent, []).append(dir_rel)
+
+        nav: dict[str, dict[str, object]] = {}
+        for dir_rel in sorted(dirs):
+            entries: list[dict[str, str]] = []
+            readme = None
+
+            for child_dir in sorted(child_dirs.get(dir_rel, []), key=lambda path: path.name.lower()):
+                entries.append(
+                    {
+                        "kind": "dir",
+                        "href": self.dir_url(child_dir),
+                        "name": child_dir.name,
+                    }
+                )
+
+            for file_rel in sorted(direct_files.get(dir_rel, []), key=lambda path: path.name.lower()):
+                if file_rel.name.lower() == "readme.md":
+                    readme = file_rel.as_posix()
+                href = self.page_url(self.target, file_rel)
+                if href is None:
+                    continue
+                entries.append(
+                    {
+                        "kind": "file",
+                        "href": href,
+                        "name": file_rel.name,
+                        "sourcePath": file_rel.as_posix(),
+                    }
+                )
+
+            item: dict[str, object] = {"entries": entries}
+            if readme is not None:
+                item["readme"] = readme
+            nav[self.rel_key(dir_rel)] = item
+
+        return nav
+
+    def dir_url(self, rel: Path) -> str:
+        if rel == Path("."):
+            return "/"
+        return f"/{rel.as_posix()}/"
+
+    def rel_key(self, rel: Path) -> str:
+        if rel == Path("."):
+            return ""
+        return rel.as_posix()
+
+    def escape_yaml(self, text: str) -> str:
+        return text.replace("\\", "\\\\").replace('"', '\\"')
 
     def find_tags(self, text: str) -> list[Tag]:
         tags: list[Tag] = []
@@ -384,13 +576,7 @@ class StageBuilder:
     def page_url(self, root: Path, rel: Path) -> str | None:
         path = root / rel
         if path.is_dir():
-            for name in ("README.md", "README.MD", "readme.md", "readme.MD", "index.md", "index.MD"):
-                candidate = rel / name
-                if (root / candidate).is_file():
-                    rel = candidate
-                    break
-            else:
-                return None
+            return self.dir_url(rel)
         if rel.suffix.lower() != ".md":
             return None
         stem = rel.with_suffix("")
@@ -498,21 +684,3 @@ class StageBuilder:
         dst = self.static_dir / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=("file", "dir"), required=True)
-    parser.add_argument("--target", required=True)
-    parser.add_argument("--content-dir", required=True)
-    parser.add_argument("--shortcodes-dir", required=True)
-    parser.add_argument("--static-dir", required=True)
-    args = parser.parse_args(argv)
-    builder = StageBuilder(
-        mode=args.mode,
-        target=Path(args.target).resolve(),
-        content_dir=Path(args.content_dir),
-        shortcodes_dir=Path(args.shortcodes_dir),
-        static_dir=Path(args.static_dir),
-    )
-    return builder.run()

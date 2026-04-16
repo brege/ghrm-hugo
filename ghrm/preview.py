@@ -68,6 +68,10 @@ class PreviewConfig:
     def shortcodes_dir(self) -> Path:
         return self.layouts_dir / "shortcodes"
 
+    @property
+    def data_dir(self) -> Path:
+        return self.site_dir / "data"
+
 
 class PreviewApp:
     def __init__(self, config: PreviewConfig) -> None:
@@ -108,6 +112,7 @@ class PreviewApp:
         self.config.static_dir.mkdir(parents=True, exist_ok=True)
         self.config.shortcodes_dir.mkdir(parents=True, exist_ok=True)
         self.config.hugo_cache_dir.mkdir(parents=True, exist_ok=True)
+        self.config.data_dir.mkdir(parents=True, exist_ok=True)
         themes_dir = self.config.site_dir / "themes"
         themes_dir.mkdir(parents=True, exist_ok=True)
         target = themes_dir / "gh-readme"
@@ -124,9 +129,7 @@ class PreviewApp:
             StageBuilder(
                 mode=self.config.mode,
                 target=self.config.target,
-                content_dir=self.config.content_dir,
-                shortcodes_dir=self.config.shortcodes_dir,
-                static_dir=self.config.static_dir,
+                site_dir=self.config.site_dir,
             ).run()
 
     def watch_root(self) -> Path:
@@ -163,6 +166,7 @@ class PreviewApp:
             '[markup.highlight]\n  noClasses = false\n\n'
             '[[module.mounts]]\n  source = "themes/gh-readme/assets"\n  target = "assets"\n\n'
             '[[module.mounts]]\n  source = "content"\n  target = "content"\n\n'
+            '[[module.mounts]]\n  source = "data"\n  target = "data"\n\n'
             f"{static_mount}"
         )
         (self.config.site_dir / "hugo.toml").write_text(config, encoding="utf-8")
