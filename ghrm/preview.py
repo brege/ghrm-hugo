@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import signal
 import shutil
@@ -86,7 +87,8 @@ class PreviewApp:
         self.prepare_site()
         self.sync_target()
         self.write_config()
-        self.watcher = build_watcher(self.watch_root(), self.sync_target)
+        assets = self.tracked_assets if self.config.mode == "dir" else None
+        self.watcher = build_watcher(self.watch_root(), self.sync_target, assets=assets)
         self.start_hugo()
         self.install_signals()
         return self.wait()
@@ -131,6 +133,27 @@ class PreviewApp:
                 target=self.config.target,
                 site_dir=self.config.site_dir,
             ).run()
+
+    def tracked_assets(self) -> set[Path]:
+        path = self.config.site_dir / "_ghrm" / "state.json"
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return set()
+        pages = data.get("pages")
+        if not isinstance(pages, dict):
+            return set()
+        assets: set[Path] = set()
+        for page in pages.values():
+            if not isinstance(page, dict):
+                continue
+            refs = page.get("assets")
+            if not isinstance(refs, list):
+                continue
+            for rel in refs:
+                if isinstance(rel, str):
+                    assets.add((self.config.target / rel).resolve(strict=False))
+        return assets
 
     def watch_root(self) -> Path:
         return self.config.target if self.config.mode == "dir" else self.config.target.parent

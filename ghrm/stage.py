@@ -181,7 +181,11 @@ class StageBuilder:
             if not (self.shortcodes_dir / f"{name}.html").is_file():
                 return False
         for rel in self.page_assets(state["pages"]):
-            if not (self.static_dir / rel).is_file():
+            src = self.target / rel
+            dst = self.static_dir / rel
+            if not src.is_file() or not dst.is_file():
+                return False
+            if not self.fresh(src, dst):
                 return False
         return True
 

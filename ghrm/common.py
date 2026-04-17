@@ -8,6 +8,7 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 import subprocess
+from typing import Callable, Iterable
 
 
 EXCLUDED_DIRS = {".git", ".venv", "node_modules", "__pycache__"}
@@ -43,6 +44,17 @@ def markdown_state(root: Path) -> tuple[tuple[int, str], ...]:
         (int(path.stat().st_mtime_ns), str(path))
         for path in markdown_files(root)
     )
+
+
+def asset_state(paths: Iterable[Path]) -> tuple[tuple[int, str], ...]:
+    items: list[tuple[int, str]] = []
+    for path in sorted({path.resolve(strict=False) for path in paths}):
+        try:
+            mtime = int(path.stat().st_mtime_ns)
+        except OSError:
+            mtime = -1
+        items.append((mtime, str(path)))
+    return tuple(items)
 
 
 def find_binary(name: str) -> str | None:
@@ -89,7 +101,8 @@ def kill_process(proc: subprocess.Popen[str] | None) -> None:
 @dataclass
 class PollWatcher:
     root: Path
-    on_change: callable
+    on_change: Callable[[], None]
+    assets: Callable[[], set[Path]] | None = None
     interval: float = 1.0
 
     def __post_init__(self) -> None:
@@ -106,9 +119,9 @@ class PollWatcher:
             self._thread.join(timeout=2)
 
     def _run(self) -> None:
-        state = markdown_state(self.root)
+        state = (markdown_state(self.root), asset_state(self.assets() if self.assets is not None else ()))
         while not self._stop.wait(self.interval):
-            current = markdown_state(self.root)
+            current = (markdown_state(self.root), asset_state(self.assets() if self.assets is not None else ()))
             if current == state:
                 continue
             state = current
@@ -116,9 +129,15 @@ class PollWatcher:
 
 
 class InotifyWatcher:
-    def __init__(self, root: Path, on_change: callable) -> None:
+    def __init__(
+        self,
+        root: Path,
+        on_change: Callable[[], None],
+        assets: Callable[[], set[Path]] | None = None,
+    ) -> None:
         self.root = root
         self.on_change = on_change
+        self.assets = assets
         self.proc: subprocess.Popen[str] | None = None
         self.thread: threading.Thread | None = None
         self.stop_event = threading.Event()
@@ -159,15 +178,20 @@ class InotifyWatcher:
         for line in self.proc.stdout:
             if self.stop_event.is_set():
                 return
-            if is_markdown(line.strip()):
+            path = Path(line.strip()).resolve(strict=False)
+            if is_markdown(path) or (self.assets is not None and path in self.assets()):
                 self.on_change()
 
 
-def build_watcher(root: Path, on_change: callable):
+def build_watcher(
+    root: Path,
+    on_change: Callable[[], None],
+    assets: Callable[[], set[Path]] | None = None,
+):
     if find_binary("inotifywait") is not None:
-        watcher = InotifyWatcher(root, on_change)
+        watcher = InotifyWatcher(root, on_change, assets=assets)
         watcher.start()
         return watcher
-    watcher = PollWatcher(root, on_change)
+    watcher = PollWatcher(root, on_change, assets=assets)
     watcher.start()
     return watcher
