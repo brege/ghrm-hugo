@@ -28,7 +28,7 @@ graph TD;
 ```
 ````
 
-### Screenshot
+### Screenshot (GitHub)
 
 ![Screenshot of a rendered Mermaid flow chart with four lavender boxes labeled A, B, C, and D. Arrows extend from A to B, B to D, A to C, and C to D.](https://docs.github.com/assets/images/help/writing/mermaid-flow-chart.png)
 
@@ -100,7 +100,7 @@ For example, you can create a map by specifying coordinates.
 ```
 ````
 
-### Screenshot
+### Screenshot (GitHub)
 
 ![Screenshot of a rendered GeoJSON map of the southeastern United States with a purple rectangular overlay over parts of Alabama and Mississippi.](https://docs.github.com/assets/images/help/writing/fenced-geojson-rendered-map.png)
 
@@ -177,7 +177,7 @@ For example, you can create a TopoJSON map by specifying coordinates and shapes.
 ```
 ````
 
-### Screenshot
+### Screenshot (GitHub)
 
 ![Screenshot of a rendered TopoJSON map of Indonesia, Singapore, and Malaysia with a blue point, a purple rectangular overlay, and blue zigzag lines.](https://docs.github.com/assets/images/help/writing/fenced-topojson-rendered-map.png)
 
