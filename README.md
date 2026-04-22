@@ -1,5 +1,9 @@
 # ghrm
 
+> [!IMPORTANT] 
+> This project has been superseded by [brege/ghrm](https://github.com/brege/ghrm), based on Rust.
+> This implementation, which is based on Hugo with Python wrappers, has reached its architectural limit.
+
 Preview GitHub-flavored Markdown locally using Hugo. Renders admonitions, Mermaid diagrams, KaTeX math, GeoJSON/TopoJSON maps, and light/dark theme toggling all whilst matching GitHub's README style.
 
 ## Ethos
@@ -71,3 +75,8 @@ ghrm .
 make uninstall
 make clean
 ```
+
+## License
+
+[GPL-3.0](LICENSE)
+
